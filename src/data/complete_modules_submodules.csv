@@ -1,0 +1,77 @@
+module,submodule
+User Authorization,User Management
+User Authorization,Role Management
+User Authorization,Password Management
+Inward Module,Gate Entry
+Inward Module,Vehicle Inspection
+Inward Module,Material Inspection
+Inward Module,Weight Capture
+Inward Module,GRN Posting
+Inward Module,Material Label Printing
+Inward Module,Palletization
+Inward Module,Put Away
+Inward Module,Location to Location Transfer
+Sampling,Cubicle and Equipment Assignment
+Sampling,Cubicle and Equipment Cleaning
+Sampling,Line Clearance
+Sampling,Picking
+Sampling,Pre Stage
+Sampling,Sampling
+Sampling,Stage Out
+Sampling,Put Away
+Dispensing,Cubicle and Equipment Assignment
+Dispensing,Cubicle and Equipment Cleaning
+Dispensing,Line Clearance
+Dispensing,Picking
+Dispensing,Pre Stage
+Dispensing,Dispensing
+Dispensing,Issue to Production
+Dispensing,Stage Out
+Dispensing,Put Away
+Dispensing,Return to Vendor
+Dispensing,Destruction
+Recipe Management,Transaction Approval
+Recipe Management,Recipe Master
+Recipe Management,Recipe Master Approval
+Recipe Management,Activity Master
+Recipe Management,Activity Master Approval
+Recipe Management,Recipe Link to Process Order
+MES,Cubicle and Equipment Assignment
+MES,Cubicle and Equipment Cleaning
+MES,Line Clearance
+MES,Operation
+MES,Dispensed Material Weight Verification
+MES,Material Consumption
+MES,In-Process Label Printing
+MES,Put Away
+MES,Pick and Issue to Stage process
+MES,Issue to Packing
+MES,Packing
+MES,Palletization
+MES,"Material Posting, Yield and OEE Calculation"
+MES,Material Return
+FG Management,Put Away
+FG Management,Picking
+FG Management,Loading
+Weighing Balance,Weighing Balance master
+Weighing Balance,Weighing Box Master
+Weighing Balance,Standard Weight Master
+Weighing Balance Calibration,Daily/Weekly/Monthly
+Masters,Plant
+Masters,SubPlant
+Masters,Department
+Masters,Area
+Masters,Location
+Masters,Equipment
+Masters,Standard Weight Box
+Masters,Standard Weights
+Masters,Weighing Balance
+Masters,User Master
+Masters,User Group Master
+Masters,Module Rights
+Masters,UOM
+Masters,Product
+Masters,Masterial
+Masters,Log Books
+Masters,Checklists
+Masters,Label and PRN files

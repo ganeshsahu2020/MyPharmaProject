@@ -1,0 +1,15 @@
+/* Tailwind v4 core */
+@import "tailwindcss";
+
+/* Light theme defaults */
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  background-color: #f9fafb; /* Light gray */
+  color: #1f2937; /* Gray-800 */
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
