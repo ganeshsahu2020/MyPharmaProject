@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 
@@ -10,11 +10,8 @@ const Dashboard = () => {
   useEffect(() => {
     const getSession = async () => {
       const { data } = await supabase.auth.getSession();
-      if (!data.session?.user) {
-        navigate('/login');
-      } else {
-        setUser(data.session.user);
-      }
+      if (!data.session?.user) navigate('/login');
+      else setUser(data.session.user);
       setLoading(false);
     };
     getSession();
@@ -23,22 +20,27 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-50">
-        <div className="text-lg font-medium text-blue-600">Loading...</div>
+        <div className="text-blue-600 font-semibold">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-lg text-center">
-        <h1 className="text-2xl font-bold text-blue-600 mb-4">Dashboard</h1>
-        {user && (
-          <div className="space-y-2">
-            <p className="text-gray-700">
-              <strong>Email:</strong> {user.email}
-            </p>
-          </div>
-        )}
+    <div className="flex-1 bg-gray-50 overflow-auto">
+      <div className="w-full px-4 md:px-8 py-6">
+        <div className="bg-white rounded-xl shadow p-6 max-w-6xl mx-auto text-center">
+          <h1 className="text-2xl font-bold text-blue-600 mb-4">Dashboard</h1>
+          {user && (
+            <div className="space-y-2">
+              <p className="text-gray-700">
+                <strong>Email:</strong> {user.email}
+              </p>
+              <p className="text-gray-700">
+                <strong>User ID:</strong> {user.id}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
