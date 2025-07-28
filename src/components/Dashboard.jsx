@@ -4,16 +4,29 @@ import { supabase } from '../utils/supabaseClient';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const getSession = async () => {
       const { data } = await supabase.auth.getSession();
-      if (!data.session?.user) navigate('/login');
-      else setUser(data.session.user);
+      if (!data.session?.user) {
+        navigate('/login');
+      } else {
+        setUser(data.session.user);
+      }
+      setLoading(false);
     };
     getSession();
   }, [navigate]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-gray-50">
+        <div className="text-lg font-medium text-blue-600">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
