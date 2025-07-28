@@ -10,7 +10,8 @@ import {
   Package,
   FlaskConical,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Menu
 } from 'lucide-react';
 
 const modules = [
@@ -67,6 +68,7 @@ const modules = [
 const LandingPage = () => {
   const [activeModule, setActiveModule] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { session } = useAuth();
@@ -99,13 +101,22 @@ const LandingPage = () => {
     <div className="flex h-screen bg-gray-100">
       {/* ✅ Sidebar */}
       <aside
-        className={`bg-blue-900 text-white flex flex-col relative transition-[width] duration-300 ease-in-out`}
+        className={`bg-blue-900 text-white flex flex-col fixed md:relative z-50 h-full transition-transform duration-300 ease-in-out
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}
         style={{ width: collapsed ? '5rem' : '16rem', minWidth: collapsed ? '5rem' : '16rem' }}
       >
         <div className="flex items-center justify-between p-4 border-b border-blue-800">
           <h2 className={`font-bold text-lg transition-opacity duration-300 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>
             Modules
           </h2>
+          {/* Close button for mobile */}
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="md:hidden bg-blue-800 px-2 py-1 rounded text-sm"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="flex-1 p-3 overflow-y-auto">
@@ -118,11 +129,6 @@ const LandingPage = () => {
               >
                 <div className="flex items-center justify-center w-6">{mod.icon}</div>
                 {!collapsed && <span className="ml-3 text-sm">{mod.name}</span>}
-                {collapsed && (
-                  <span className="absolute left-16 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50">
-                    {mod.name}
-                  </span>
-                )}
               </button>
 
               {activeModule === index && (
@@ -130,19 +136,14 @@ const LandingPage = () => {
                   {mod.submodules.map((sub, idx) => {
                     const routePath = `/${mod.route}/${sub.toLowerCase().replace(/\s+/g, '-')}`;
                     return (
-                      <div key={idx} className="relative group">
-                        <Link
-                          to={routePath}
-                          className="block px-2 py-1 text-xs rounded hover:bg-blue-700 transition text-white"
-                        >
-                          {collapsed ? mod.icon : sub}
-                        </Link>
-                        {collapsed && (
-                          <span className="absolute left-16 top-1/2 -translate-y-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50">
-                            {sub}
-                          </span>
-                        )}
-                      </div>
+                      <Link
+                        key={idx}
+                        to={routePath}
+                        className="block px-2 py-1 text-xs rounded hover:bg-blue-700 transition text-white"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        {sub}
+                      </Link>
                     );
                   })}
                 </div>
@@ -161,9 +162,23 @@ const LandingPage = () => {
         </div>
       </aside>
 
+      {/* ✅ Overlay for mobile */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       {/* ✅ Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col md:ml-0">
         <header className="flex items-center justify-between bg-white shadow px-6 py-3">
+          <button
+            className="md:hidden bg-blue-600 text-white p-2 rounded"
+            onClick={() => setMobileOpen(true)}
+          >
+            <Menu size={20} />
+          </button>
           <div className="flex-1 flex justify-center">
             <h1 className="text-2xl font-bold text-blue-700">DigitizerX</h1>
           </div>
