@@ -1,205 +1,140 @@
-import React, { useState, useEffect } from "react";
-import { supabase } from "../../../utils/supabaseClient";
-import { useAuth } from "../../../contexts/AuthContext";
+import {useState} from 'react';
+import {supabase} from '../../../utils/supabaseClient';
+import {useAuth} from '../../../contexts/AuthContext';
 
-const PasswordManagement = () => {
-  const { session } = useAuth();
-  const [employees, setEmployees] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [history, setHistory] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+export default function PasswordManagement(){
+  const {session}=useAuth();
+  const email=session?.user?.email||'';
 
-  // ✅ Check if current user is SuperAdmin/Admin
-  useEffect(() => {
-    const checkRole = async () => {
-      if (!session?.user?.email) return;
-      const { data } = await supabase
-        .from("user_management")
-        .select("role")
-        .eq("email", session.user.email)
-        .single();
-      const roles = data?.role || [];
-      setIsAdmin(roles.includes("Super Admin") || roles.includes("Admin"));
-      setLoading(false);
-    };
-    checkRole();
-  }, [session]);
+  const [form,setForm]=useState({
+    old_password:'',
+    new_password:'',
+    confirm_password:''
+  });
 
-  // ✅ Load employees for dropdown
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      const { data } = await supabase
-        .from("user_management")
-        .select("employee_id, first_name, last_name, email");
-      setEmployees(data || []);
-    };
-    fetchEmployees();
-  }, []);
+  const [message,setMessage]=useState('');
+  const [error,setError]=useState('');
+  const [loading,setLoading]=useState(false);
 
-  // ✅ Fetch password history (last 5 resets)
-  const fetchHistory = async (email) => {
-    const { data } = await supabase
-      .from("password_history")
-      .select("changed_at, reset_by")
-      .eq("email", email)
-      .order("changed_at", { ascending: false })
-      .limit(5);
+  const handleChangePassword=async(e)=>{
+    e.preventDefault();
+    setError('');
+    setMessage('');
 
-    if (data?.length) {
-      setHistory(data);
-    } else {
-      const { data: user } = await supabase
-        .from("user_management")
-        .select("password_updated_at")
-        .eq("email", email)
-        .single();
+    const{old_password,new_password,confirm_password}=form;
 
-      if (user?.password_updated_at) {
-        setHistory([{ changed_at: user.password_updated_at, reset_by: "Initial" }]);
-      } else {
-        setHistory([]);
+    if(!email){
+      setError('No active session found.');
+      return;
+    }
+
+    if(!old_password||!new_password||!confirm_password){
+      setError('All fields are required.');
+      return;
+    }
+
+    if(new_password!==confirm_password){
+      setError('Passwords do not match.');
+      return;
+    }
+
+    if(new_password.length<8){
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+
+    setLoading(true);
+
+    try{
+      // 🔐 Re-authenticate with old password
+      const{error:reauthError}=await supabase.auth.signInWithPassword({
+        email,
+        password:old_password
+      });
+
+      if(reauthError){
+        setError('Old password is incorrect.');
+        return;
       }
+
+      // ✅ Update password
+      const{error:updateError}=await supabase.auth.updateUser({
+        password:new_password
+      });
+
+      if(updateError){
+        setError(updateError.message);
+        return;
+      }
+
+      // 📅 Update password_updated_at in your user_management table
+      await supabase
+        .from('user_management')
+        .update({password_updated_at:new Date().toISOString()})
+        .eq('email',email);
+
+      setMessage('✅ Password updated successfully.');
+      setForm({old_password:'',new_password:'',confirm_password:''});
+    }catch(err){
+      console.error('Password change error:',err);
+      setError('Unexpected error occurred. Try again.');
+    }finally{
+      setLoading(false);
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!selectedEmployee || !newPassword) return;
+  return(
+    <div className="p-4 max-w-md mx-auto bg-white rounded shadow">
+      <h2 className="text-xl font-bold mb-4 text-center text-blue-600">Change Password</h2>
 
-    const adminEmail = session?.user?.email || "Unknown";
-    const { error } = await supabase.rpc("reset_user_password", {
-      target_email: selectedEmployee,
-      new_password: newPassword,
-      reset_by: adminEmail,
-    });
+      {message&&<div className="bg-green-100 text-green-700 p-2 rounded mb-3">{message}</div>}
+      {error&&<div className="bg-red-100 text-red-700 p-2 rounded mb-3">{error}</div>}
 
-    if (error) {
-      alert("Error resetting password: " + error.message);
-    } else {
-      alert("✅ Password reset successfully");
-      fetchHistory(selectedEmployee);
-      setNewPassword("");
-    }
-    setShowModal(false);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <p className="text-gray-600">Checking permissions...</p>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <p className="text-red-600 font-bold">
-          ❌ Access Denied: Only SuperAdmin/Admin can reset passwords.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Password Management</h1>
-
-      {/* ✅ Employee Selection */}
-      <label className="block mb-2 font-medium">Select Employee</label>
-      <select
-        className="w-full border p-2 rounded mb-4"
-        value={selectedEmployee}
-        onChange={(e) => {
-          setSelectedEmployee(e.target.value);
-          fetchHistory(e.target.value);
-        }}
-      >
-        <option value="">-- Select Employee --</option>
-        {employees.map((emp) => (
-          <option key={emp.employee_id} value={emp.email}>
-            {emp.employee_id} - {emp.first_name} {emp.last_name} ({emp.email})
-          </option>
-        ))}
-      </select>
-
-      {/* ✅ New Password */}
-      <label className="block mb-2 font-medium">New Password</label>
-      <input
-        type="password"
-        className="w-full border rounded p-2 mb-4"
-        value={newPassword}
-        onChange={(e) => setNewPassword(e.target.value)}
-        placeholder="Enter new password"
-        autoComplete="new-password"
-      />
-
-      <button
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        onClick={() => setShowModal(true)}
-        disabled={!selectedEmployee || !newPassword}
-      >
-        Reset Password
-      </button>
-
-      {/* ✅ Password History */}
-      {history.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2">Password History</h3>
-          <table className="w-full border border-gray-200 rounded">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-2 border">Date</th>
-                <th className="p-2 border">Reset By</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((h, i) => (
-                <tr key={i} className="text-sm">
-                  <td className="p-2 border">
-                    {new Date(h.changed_at).toLocaleString()}
-                  </td>
-                  <td className="p-2 border">{h.reset_by || "System"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="text-xs text-gray-500 mt-1 italic">
-            Showing last 5 resets
-          </p>
+      <form onSubmit={handleChangePassword}>
+        <div className="mb-4">
+          <label className="block mb-1 font-medium">Old Password</label>
+          <input
+            type="password"
+            className="border p-2 w-full rounded"
+            value={form.old_password}
+            onChange={(e)=>setForm({...form,old_password:e.target.value})}
+            placeholder="Enter old password"
+            required
+          />
         </div>
-      )}
 
-      {/* ✅ Confirmation Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 shadow-xl max-w-sm w-full">
-            <h2 className="text-lg font-bold mb-3">Confirm Reset</h2>
-            <p className="mb-4">
-              Are you sure you want to reset the password for{" "}
-              <strong>{selectedEmployee}</strong>?
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                className="px-3 py-1 bg-gray-300 rounded"
-                onClick={() => setShowModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-3 py-1 bg-red-600 text-white rounded"
-                onClick={handleResetPassword}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
+        <div className="mb-4">
+          <label className="block mb-1 font-medium">New Password</label>
+          <input
+            type="password"
+            className="border p-2 w-full rounded"
+            value={form.new_password}
+            onChange={(e)=>setForm({...form,new_password:e.target.value})}
+            placeholder="Enter new password"
+            required
+          />
         </div>
-      )}
+
+        <div className="mb-6">
+          <label className="block mb-1 font-medium">Confirm Password</label>
+          <input
+            type="password"
+            className="border p-2 w-full rounded"
+            value={form.confirm_password}
+            onChange={(e)=>setForm({...form,confirm_password:e.target.value})}
+            placeholder="Confirm new password"
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+        >
+          {loading?'Updating...':'Update Password'}
+        </button>
+      </form>
     </div>
   );
-};
-
-export default PasswordManagement;
+}

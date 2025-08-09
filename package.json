@@ -6,16 +6,24 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "set-passwords": "node ./scripts/setPasswords.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.52.1",
+    "@radix-ui/react-tabs": "^1.1.12",
+    "@shadcn/ui": "^0.0.4",
+    "@supabase/supabase-js": "^2.53.0",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.1",
     "lucide-react": "^0.526.0",
     "postcss": "^8.5.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-hot-toast": "^2.5.2",
     "react-router-dom": "^7.7.1",
-    "react-to-print": "^3.1.1"
+    "react-select": "^5.10.2",
+    "react-to-print": "^3.1.1",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.11",
