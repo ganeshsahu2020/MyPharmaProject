@@ -20,14 +20,14 @@ import UomMaster from './submodules/masters/UomMaster';
 
 /* ---------------- Document Management ---------------- */
 import LabelMaster from './submodules/DocumentManagement/LabelMaster';
-import CheckListMaster from './submodules/documentmanagement/checklistmaster';
+import CheckListMaster from './submodules/DocumentManagement/CheckListMaster.jsx';
 
-/* ---------------- Weighing Balance ---------------- */
-import WeightBoxMaster from './submodules/WeighingBalance/WeightBoxMaster';
-import StandardWeightMaster from './submodules/WeighingBalance/StandardWeightMaster';
-import WeighingModules from './submodules/WeighingBalance/WeighingModules';
-import DailyVerificationLog from './submodules/WeighingBalance/DailyVerificationLog';
-import MonthlyCalibrationProcess from './submodules/WeighingBalance/MonthlyCalibrationLog/MonthlyCalibrationProcess';
+/* ---------------- Weighing Balance (case-sensitive paths) ---------------- */
+import WeightBoxMaster from './submodules/weighingbalance/WeightBoxMaster.jsx';
+import StandardWeightMaster from './submodules/weighingbalance/StandardWeightMaster.jsx';
+import WeighingModules from './submodules/weighingbalance/WeighingModules.jsx';
+import DailyVerificationLog from './submodules/weighingbalance/DailyVerificationLog.jsx';
+import MonthlyCalibrationProcess from './submodules/weighingbalance/monthlycalibrationlog/MonthlyCalibrationProcess.jsx';
 
 /* ---------------- HR ---------------- */
 import HRDashboard from './submodules/hr/HRDashboard';
@@ -42,7 +42,7 @@ import HRSettings from './submodules/hr/HRSettings';
 import Announcements from './submodules/hr/Announcements';
 import HRDocumentManagement from './submodules/hr/DocumentManagement';
 import EmployeeSelfService from './submodules/hr/EmployeeSelfService';
-import ShiftScheduleManagement from './submodules/hr/ShiftScheduleManagement'; // ✅ distinct submodule
+import ShiftScheduleManagement from './submodules/hr/ShiftScheduleManagement';
 
 const componentMap={
   /* User Authorization */
@@ -71,11 +71,11 @@ const componentMap={
   'dailyverification-log':DailyVerificationLog,
   'monthlycalibration-log':MonthlyCalibrationProcess,
 
-  /* HR (keep Attendance & Shift Schedule separate) */
+  /* HR */
   'hr-dashboard':HRDashboard,
   'leave-management':LeaveManagement,
   'attendance-management':AttendanceManagement,
-  'shift-schedule-management':ShiftScheduleManagement, // ✅
+  'shift-schedule-management':ShiftScheduleManagement,
   'payroll-management':PayrollManagement,
   'paystub-editor':PaystubEditor,
   'performance-review':PerformanceReview,
@@ -88,16 +88,13 @@ const componentMap={
 };
 
 const toKey=(s)=>(s?s.toLowerCase().replace(/\s+/g,'-'):'');
-
 const ModuleRenderer=()=>{
   const {moduleKey,submoduleKey}=useParams();
   const activeKey=toKey(submoduleKey)||toKey(moduleKey);
   const MatchedComponent=useMemo(()=>componentMap[activeKey]||null,[activeKey]);
 
-  // derive an optional mode prop (only PaystubEditor cares)
   const mode=activeKey==='paystub-editor'?'editor':'approval';
 
-  // simple memoized element cache (keeps state while navigating)
   const cacheRef=useRef(new Map());
   let element=cacheRef.current.get(activeKey);
   if(!element&&MatchedComponent){
@@ -118,7 +115,6 @@ const ModuleRenderer=()=>{
           </AlertDescription>
         </Alert>
       )}
-
       {import.meta.env.MODE==='development'&&(
         <div className="fixed bottom-2 right-2 bg-yellow-200 text-black border border-yellow-400 rounded p-2 text-xs shadow-lg z-50">
           <div><strong>Module:</strong> {moduleKey}</div>
