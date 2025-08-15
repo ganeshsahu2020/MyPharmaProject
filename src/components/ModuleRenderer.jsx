@@ -1,13 +1,15 @@
 import React,{useMemo,useRef} from 'react';
 import {useParams} from 'react-router-dom';
+import {Alert,AlertDescription,AlertTitle} from './ui/alert';
+import {AlertCircle} from 'lucide-react';
 
-// 🔹 User Authorization
+/* ---------------- User Authorization ---------------- */
 import UserManagement from './submodules/UserAuthorization/UserManagement';
 import RoleManagement from './submodules/UserAuthorization/RoleManagement';
 import PasswordManagement from './submodules/UserAuthorization/PasswordManagement';
 import SuperAdminPasswordReset from './submodules/UserAuthorization/SuperAdminPasswordReset';
 
-// 🔹 Masters
+/* ---------------- Masters ---------------- */
 import PlantMaster from './submodules/masters/PlantMaster';
 import SubPlantMaster from './submodules/masters/SubPlantMaster';
 import DepartmentMaster from './submodules/masters/DepartmentMaster';
@@ -16,29 +18,40 @@ import LocationMaster from './submodules/masters/LocationMaster';
 import EquipmentMaster from './submodules/masters/EquipmentMaster';
 import UomMaster from './submodules/masters/UomMaster';
 
-// 🔹 Document Management
+/* ---------------- Document Management ---------------- */
 import LabelMaster from './submodules/DocumentManagement/LabelMaster';
+import CheckListMaster from './submodules/documentmanagement/checklistmaster';
 
-// 🔹 Weighing Balance
+/* ---------------- Weighing Balance ---------------- */
 import WeightBoxMaster from './submodules/WeighingBalance/WeightBoxMaster';
 import StandardWeightMaster from './submodules/WeighingBalance/StandardWeightMaster';
 import WeighingModules from './submodules/WeighingBalance/WeighingModules';
 import DailyVerificationLog from './submodules/WeighingBalance/DailyVerificationLog';
-import MonthlyCalibrationMaster from './submodules/WeighingBalance/MonthlyCalibrationMaster';
+import MonthlyCalibrationProcess from './submodules/WeighingBalance/MonthlyCalibrationLog/MonthlyCalibrationProcess';
 
-// ⛳️ IMPORTANT: match your actual file name!
-// If your file is "Step2Checklist.jsx" (no underscore), keep this line:
-import Step2Checklist from './submodules/weighingbalance/Step2_Checklist';
-// If your file is "Step2_Checklist.jsx" (with underscore), use this instead:
-// import Step2Checklist from './submodules/WeighingBalance/Step2_Checklist';
-
-import Step3WeightReadings from './submodules/WeighingBalance/Step3_WeightReadings';
+/* ---------------- HR ---------------- */
+import HRDashboard from './submodules/hr/HRDashboard';
+import LeaveManagement from './submodules/hr/LeaveManagement';
+import AttendanceManagement from './submodules/hr/AttendanceManagement';
+import PayrollManagement from './submodules/hr/PayrollManagement';
+import PaystubEditor from './submodules/hr/PaystubEditor';
+import PerformanceReview from './submodules/hr/PerformanceReview';
+import RecruitmentMgmt from './submodules/hr/RecruitmentManagement';
+import TrainingManagement from './submodules/hr/TrainingManagement';
+import HRSettings from './submodules/hr/HRSettings';
+import Announcements from './submodules/hr/Announcements';
+import HRDocumentManagement from './submodules/hr/DocumentManagement';
+import EmployeeSelfService from './submodules/hr/EmployeeSelfService';
+import ShiftScheduleManagement from './submodules/hr/ShiftScheduleManagement'; // ✅ distinct submodule
 
 const componentMap={
+  /* User Authorization */
   'user-management':UserManagement,
   'role-management':RoleManagement,
   'password-management':PasswordManagement,
   'superadmin-password-reset':SuperAdminPasswordReset,
+
+  /* Masters */
   'plant-master':PlantMaster,
   'subplant-master':SubPlantMaster,
   'department-master':DepartmentMaster,
@@ -46,47 +59,72 @@ const componentMap={
   'location-master':LocationMaster,
   'equipment-master':EquipmentMaster,
   'uom-master':UomMaster,
+
+  /* Document Management */
   'label-master':LabelMaster,
+  'check-list-master':CheckListMaster,
+
+  /* Weighing Balance */
   'weightbox-master':WeightBoxMaster,
   'standardweight-master':StandardWeightMaster,
   'weighing-modules':WeighingModules,
   'dailyverification-log':DailyVerificationLog,
-  'monthlycalibration-master':MonthlyCalibrationMaster,
-  'step2-checklist':Step2Checklist,
-  'step3-weightreadings':Step3WeightReadings
+  'monthlycalibration-log':MonthlyCalibrationProcess,
+
+  /* HR (keep Attendance & Shift Schedule separate) */
+  'hr-dashboard':HRDashboard,
+  'leave-management':LeaveManagement,
+  'attendance-management':AttendanceManagement,
+  'shift-schedule-management':ShiftScheduleManagement, // ✅
+  'payroll-management':PayrollManagement,
+  'paystub-editor':PaystubEditor,
+  'performance-review':PerformanceReview,
+  'recruitment-management':RecruitmentMgmt,
+  'training-management':TrainingManagement,
+  'hr-settings':HRSettings,
+  'announcements':Announcements,
+  'hr-document-management':HRDocumentManagement,
+  'employee-self-service':EmployeeSelfService
 };
 
-const toKey=(s)=>s?.toLowerCase().replace(/\s+/g,'-')||'';
+const toKey=(s)=>(s?s.toLowerCase().replace(/\s+/g,'-'):'');
 
 const ModuleRenderer=()=>{
   const {moduleKey,submoduleKey}=useParams();
   const activeKey=toKey(submoduleKey)||toKey(moduleKey);
-
   const MatchedComponent=useMemo(()=>componentMap[activeKey]||null,[activeKey]);
 
-  // cache mounted instances so inputs don't reset on re-renders
+  // derive an optional mode prop (only PaystubEditor cares)
+  const mode=activeKey==='paystub-editor'?'editor':'approval';
+
+  // simple memoized element cache (keeps state while navigating)
   const cacheRef=useRef(new Map());
   let element=cacheRef.current.get(activeKey);
   if(!element&&MatchedComponent){
-    element=<MatchedComponent/>;
+    element=<MatchedComponent mode={mode}/>;
     cacheRef.current.set(activeKey,element);
   }
 
   return (
     <div className="relative p-4">
-      {element?element:(
-        <div className="animate-pulse p-6 bg-gray-100 rounded-md">
-          <div className="h-6 bg-gray-300 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-gray-300 rounded w-2/3 mb-2"></div>
-          <div className="h-4 bg-gray-300 rounded w-1/2"></div>
-        </div>
+      {element?(
+        element
+      ):(
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4"/>
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            Module &quot;{activeKey}&quot; not found. Please check the URL or contact support.
+          </AlertDescription>
+        </Alert>
       )}
 
       {import.meta.env.MODE==='development'&&(
-        <div className="fixed bottom-2 right-2 bg-yellow-200 border border-yellow-400 rounded p-2 text-xs shadow-lg z-50">
+        <div className="fixed bottom-2 right-2 bg-yellow-200 text-black border border-yellow-400 rounded p-2 text-xs shadow-lg z-50">
           <div><strong>Module:</strong> {moduleKey}</div>
           <div><strong>Submodule:</strong> {submoduleKey}</div>
           <div><strong>Active Key:</strong> {activeKey}</div>
+          <div><strong>Mode:</strong> {mode}</div>
           <div><strong>Matched:</strong> {MatchedComponent?'✅ Found':'❌ Undefined'}</div>
         </div>
       )}
@@ -94,4 +132,4 @@ const ModuleRenderer=()=>{
   );
 };
 
-export default React.memo(ModuleRenderer);
+export default ModuleRenderer;

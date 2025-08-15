@@ -188,7 +188,7 @@ const RoleManagement = () => {
 
           <label className="block mb-1 font-medium">Role</label>
           <div className="flex flex-wrap gap-3 mb-3">
-            {['Super Admin','Admin','Manager','Supervisor','Operator','QA','Engineering'].map(r=>(
+            {['Super Admin','Admin','HR','Manager','Supervisor','Operator','QA','Engineering'].map(r=>(
               <label key={r} className="flex items-center gap-1">
                 <input type="checkbox" checked={form.role.includes(r)} onChange={()=>toggleArrayValue('role',r)} />
                 {r}

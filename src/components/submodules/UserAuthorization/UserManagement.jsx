@@ -121,7 +121,7 @@ export default function UserManagement() {
       supabase.from('plant_master').select('id,plant_id,description').order('plant_id',{ascending:true}),
       supabase.from('subplant_master').select('id,subplant_id,subplant_name,plant_uid').order('subplant_id',{ascending:true}),
       supabase.from('department_master').select('id,department_id,department_name,subplant_uid').order('department_id',{ascending:true}),
-      supabase.from('vw_user_management').select('*').order('created_at',{ascending:true})
+      supabase.from('vw_user_management_ext').select('*').order('created_at',{ascending:true})
     ]).then(([pl,sp,dp,vu]) => {
       if (pl.error) throw new Error(pl.error.message);
       if (sp.error) throw new Error(sp.error.message);
@@ -371,6 +371,7 @@ export default function UserManagement() {
               <option value="">Select Role</option>
               <option value="Super Admin">Super Admin</option>
               <option value="Admin">Admin</option>
+              <option value="HR">HR</option>
               <option value="Manager">Manager</option>
               <option value="Supervisor">Supervisor</option>
               <option value="Operator">Operator</option>

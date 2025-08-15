@@ -1,17 +1,30 @@
+// src/utils/supabaseClient.js
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Debugging: Log environment variables (remove in production)
+console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+console.log('Supabase Key:', import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 10) + '...');
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('❌ Supabase env variables are missing. Check your .env file.');
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(`
+    Missing Supabase configuration!
+    Received:
+    - VITE_SUPABASE_URL: ${supabaseUrl ? '***' : 'MISSING'}
+    - VITE_SUPABASE_ANON_KEY: ${supabaseAnonKey ? '***' : 'MISSING'}
+    
+    Please ensure your .env file contains:
+    VITE_SUPABASE_URL=your-project-url
+    VITE_SUPABASE_ANON_KEY=your-anon-key
+  `);
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// ✅ Optional debug logs (remove in production)
-console.log('✅ Supabase URL:', SUPABASE_URL);
-console.log('✅ Supabase Key Loaded:', !!SUPABASE_ANON_KEY);
-
-// ✅ Optional app version (from .env)
-export const APP_VERSION = import.meta.env.VITE_APP_VERSION || 'v1.0.0';
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});

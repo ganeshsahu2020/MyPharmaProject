@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../utils/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Label } from './ui/label';
 
 const Login = () => {
   const navigate = useNavigate();
-
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,17 +20,11 @@ const Login = () => {
     setError('');
     setLoading(true);
 
-    const { data, error: loginError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password: password.trim()
-    });
-
-    if (loginError) {
-      console.error('❌ Login failed:', loginError.message);
-      setError('❌ Invalid email or password');
+    const success = await login({ email: email.trim(), password: password.trim() });
+    if (success) {
+      navigate('/');
     } else {
-      toast.success('✅ Login successful');
-      navigate('/'); // 👈 Redirects to dashboard or home
+      setError('Invalid email or password');
     }
 
     setLoading(false);
@@ -34,82 +32,109 @@ const Login = () => {
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
-      toast.error('⚠️ Enter your email first');
+      toast.error('⚠️ Enter your email first', {
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          fontSize: '14px',
+          borderRadius: '4px',
+          padding: '10px 14px',
+        },
+      });
       return;
     }
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: 'http://localhost:5173/update-password' // ✅ Change this in production
+      redirectTo: import.meta.env.VITE_APP_URL
+        ? `${import.meta.env.VITE_APP_URL}/update-password`
+        : 'http://localhost:5173/update-password',
     });
 
     if (error) {
-      toast.error('❌ Failed to send reset link');
-      console.error(error.message);
+      toast.error(`❌ Failed to send reset link: ${error.message}`, {
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          fontSize: '14px',
+          borderRadius: '4px',
+          padding: '10px 14px',
+        },
+      });
+      console.error('Reset password error:', error.message);
     } else {
-      toast.success('📧 Password reset link sent!');
+      toast.success('📧 Password reset link sent!', {
+        style: {
+          background: '#d1fae5',
+          color: '#065f46',
+          fontSize: '14px',
+          borderRadius: '4px',
+          padding: '10px 14px',
+        },
+      });
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-blue-700">DigitizerX</h1>
-          <p className="text-gray-500 text-sm mt-1">Secure Login Portal</p>
-        </div>
-
-        {error && <p className="text-red-600 mb-3 text-center">{error}</p>}
-
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              placeholder="Enter email"
-              autoComplete="email"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              placeholder="Enter password"
-              autoComplete="current-password"
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition"
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-
-          <div className="text-right text-sm mt-2">
-            <button
-              type="button"
-              onClick={handleForgotPassword}
-              className="text-blue-600 hover:underline"
+    <div className="min-h-screen flex items-center justify-center bg-white px-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold text-blue-700">DigitizerX</CardTitle>
+          <CardDescription className="text-gray-500">Secure Login Portal</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <p className="text-red-600 mb-3 text-center">{error}</p>
+          )}
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter email"
+                autoComplete="email"
+                required
+                disabled={loading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
+                autoComplete="current-password"
+                required
+                disabled={loading}
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg"
             >
-              Forgot Password?
-            </button>
-          </div>
-        </form>
-
-        <p className="text-center text-xs text-gray-400 mt-6">
-          © {new Date().getFullYear()} DigitizerX Pharma Systems
-        </p>
-      </div>
+              {loading ? 'Logging in...' : 'Login'}
+            </Button>
+            <div className="text-right text-sm">
+              <Button
+                type="button"
+                variant="link"
+                onClick={handleForgotPassword}
+                className="text-blue-600"
+              >
+                Forgot Password?
+              </Button>
+            </div>
+          </form>
+          <p className="text-center text-xs text-gray-400 mt-6">
+            © {new Date().getFullYear()} DigitizerX Pharma Systems
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 };

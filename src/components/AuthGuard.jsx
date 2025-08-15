@@ -1,24 +1,18 @@
-import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 
 const AuthGuard = ({ children }) => {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate a brief loading period to ensure auth state is ready
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 100); // Short delay to mimic async check
-
-    return () => clearTimeout(timer);
-  }, []);
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="text-gray-600">🔄 Checking session...</div>
+      <div className="h-screen flex items-center justify-center bg-white">
+        <div className="flex items-center gap-2 text-gray-700" role="status" aria-live="polite">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Checking session...</span>
+        </div>
       </div>
     );
   }
