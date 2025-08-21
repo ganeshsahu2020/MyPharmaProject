@@ -1,12 +1,24 @@
+# netlify.toml
+
 [build]
-command = "npm run build"
-publish = "dist"
+  command = "npm run build"
+  publish = "dist"
 
 [build.environment]
-NODE_VERSION = "20"
+  NODE_VERSION = "20"
+
+# Set your app URL for production builds (used by your reset-password redirect, etc.)
+[context.production.environment]
+  VITE_APP_URL = "https://digitizerxp.netlify.app"
+
+# Optional: nicer caching for built assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
 
 # SPA routing (React Router refresh-safe)
 [[redirects]]
-from = "/*"
-to = "/index.html"
-status = 200
+  from = "/*"
+  to = "/index.html"
+  status = 200
