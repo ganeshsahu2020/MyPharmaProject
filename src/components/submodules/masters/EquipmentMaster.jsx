@@ -53,6 +53,23 @@ const StatusBadge=({status})=>{
   return <span className={`inline-flex items-center px-2 py-0.5 border rounded-full text-xs font-medium ${cls}`}>{status||'-'}</span>;
 };
 
+/* -------------------- helpers: ID normalization & compare -------------------- */
+const toStr=(v)=>v==null?'':String(v); // normalize ids & fks to string
+const same=(a,b)=>toStr(a)===toStr(b); // safe equality for UUID or numeric
+
+const normPlant=(r)=>({id:toStr(r.id),plant_id:r.plant_id,description:r.description,status:r.status});
+const normSubplant=(r)=>({id:toStr(r.id),subplant_id:r.subplant_id,subplant_name:r.subplant_name,plant_uid:toStr(r.plant_uid),status:r.status});
+const normDept=(r)=>({id:toStr(r.id),department_id:r.department_id,department_name:r.department_name,subplant_uid:toStr(r.subplant_uid),status:r.status});
+const normArea=(r)=>({id:toStr(r.id),area_id:r.area_id,area_name:r.area_name,department_uid:toStr(r.department_uid),status:r.status});
+const normEqView=(r)=>({
+  ...r,
+  equipment_uid:toStr(r.equipment_uid),
+  area_uid:toStr(r.area_uid),
+  department_uid:toStr(r.department_uid),
+  subplant_uid:toStr(r.subplant_uid),
+  plant_uid:toStr(r.plant_uid)
+});
+
 /* -------------------- Component -------------------- */
 export default function EquipmentMaster(){
   // dropdown sources
@@ -76,7 +93,7 @@ export default function EquipmentMaster(){
   const [selectedArea,setSelectedArea]=useState('');
 
   const [form,setForm]=useState({
-    id:null, // equipment_master.id
+    id:null, // mapped to view.equipment_uid (asset.id)
     equipment_id:'',
     equipment_name:'',
     equipment_type:'',
@@ -91,40 +108,49 @@ export default function EquipmentMaster(){
 
   async function loadAll(){
     setLoading(true);
-    const op=Promise.all([
-      supabase.from('plant_master').select('id,plant_id,description,status').order('plant_id',{ascending:true}),
-      supabase.from('subplant_master').select('id,subplant_id,subplant_name,plant_uid,status').order('subplant_id',{ascending:true}),
-      supabase.from('department_master').select('id,department_id,department_name,subplant_uid,status').order('department_id',{ascending:true}),
-      supabase.from('area_master').select('id,area_id,area_name,department_uid,status').order('area_id',{ascending:true}),
-      supabase.from('vw_equipment_master').select('*').order('equipment_id',{ascending:true})
-    ]).then(([pl,sp,dp,ar,vw])=>{
-      if(pl.error) throw new Error(pl.error.message);
-      if(sp.error) throw new Error(sp.error.message);
-      if(dp.error) throw new Error(dp.error.message);
-      if(ar.error) throw new Error(ar.error.message);
-      if(vw.error) throw new Error(vw.error.message);
-      setPlants(pl.data||[]);
-      setSubplants(sp.data||[]);
-      setDepartments(dp.data||[]);
-      setAreas(ar.data||[]);
-      setRows(vw.data||[]);
-    }).finally(()=>setLoading(false));
+    try{
+      const [pl,sp,dp,ar]=await Promise.all([
+        supabase.from('plant_master').select('id,plant_id,description,status').order('plant_id',{ascending:true}),
+        supabase.from('subplant_master').select('id,subplant_id,subplant_name,plant_uid,status').order('subplant_id',{ascending:true}),
+        supabase.from('department_master').select('id,department_id,department_name,subplant_uid,status').order('department_id',{ascending:true}),
+        supabase.from('area_master').select('id,area_id,area_name,department_uid,status').order('area_id',{ascending:true})
+      ]);
+      if(pl.error) throw pl.error; if(sp.error) throw sp.error; if(dp.error) throw dp.error; if(ar.error) throw ar.error;
 
-    await toast.promise(op,{loading:'Loading equipment...',success:'Loaded',error:(e)=>`Load failed: ${e.message}`});
+      setPlants((pl.data||[]).map(normPlant));
+      setSubplants((sp.data||[]).map(normSubplant));
+      setDepartments((dp.data||[]).map(normDept));
+      setAreas((ar.data||[]).map(normArea));
+
+      // try v3, fallback to v2
+      let eq = await supabase.from('vw_equipment_master_v3').select('*').order('equipment_id',{ascending:true});
+      if(eq.error){
+        eq = await supabase.from('vw_equipment_master_v2').select('*').order('equipment_id',{ascending:true});
+      }
+      if(eq.error) throw eq.error;
+      setRows((eq.data||[]).map(normEqView));
+
+      toast.success('Loaded');
+    }catch(e){
+      console.error(e);
+      toast.error(e.message||'Load failed');
+    }finally{
+      setLoading(false);
+    }
   }
 
-  // cascading dropdown filters
-  const filteredSubplants=useMemo(()=>selectedPlant?subplants.filter((s)=>s.plant_uid===selectedPlant):[],[selectedPlant,subplants]);
-  const filteredDepartments=useMemo(()=>selectedSubplant?departments.filter((d)=>d.subplant_uid===selectedSubplant):[],[selectedSubplant,departments]);
-  const filteredAreas=useMemo(()=>selectedDepartment?areas.filter((a)=>a.department_uid===selectedDepartment):[],[selectedDepartment,areas]);
+  // cascading dropdown filters (IDs compared as strings)
+  const filteredSubplants=useMemo(()=>selectedPlant?subplants.filter((s)=>same(s.plant_uid,selectedPlant)):[],[selectedPlant,subplants]);
+  const filteredDepartments=useMemo(()=>selectedSubplant?departments.filter((d)=>same(d.subplant_uid,selectedSubplant)):[],[selectedSubplant,departments]);
+  const filteredAreas=useMemo(()=>selectedDepartment?areas.filter((a)=>same(a.department_uid,selectedDepartment)):[],[selectedDepartment,areas]);
 
-  // search filter for table
+  // search filter for table (uses view rows)
   const filteredRows=useMemo(()=>{
     let data=rows;
-    if(selectedPlant) data=data.filter((r)=>r.plant_uid===selectedPlant);
-    if(selectedSubplant) data=data.filter((r)=>r.subplant_uid===selectedSubplant);
-    if(selectedDepartment) data=data.filter((r)=>r.department_uid===selectedDepartment);
-    if(selectedArea) data=data.filter((r)=>r.area_uid===selectedArea);
+    if(selectedPlant) data=data.filter((r)=>same(r.plant_uid,selectedPlant));
+    if(selectedSubplant) data=data.filter((r)=>same(r.subplant_uid,selectedSubplant));
+    if(selectedDepartment) data=data.filter((r)=>same(r.department_uid,selectedDepartment));
+    if(selectedArea) data=data.filter((r)=>same(r.area_uid,selectedArea));
     if(search.trim()){
       const t=search.toLowerCase();
       data=data.filter((r)=>
@@ -140,35 +166,43 @@ export default function EquipmentMaster(){
     setSelectedPlant('');setSelectedSubplant('');setSelectedDepartment('');setSelectedArea('');
   }
 
-  // ---- Unique ID preflight check helpers ----
-  async function assertEquipmentIdUniqueOnCreate(equipment_id){
-    if(!equipment_id) return;
-    const {data,error}=await supabase
-      .from('equipment_master')
-      .select('id')
-      .eq('equipment_id',equipment_id)
-      .maybeSingle();
-    if(error){throw new Error(error.message);}
-    if(data){throw new Error('Equipment ID must be unique');}
-  }
-
-  async function assertEquipmentIdUniqueOnUpdate(equipment_id,currentId){
-    if(!equipment_id||!currentId) return;
-    const {data,error}=await supabase
-      .from('equipment_master')
-      .select('id')
-      .eq('equipment_id',equipment_id)
-      .neq('id',currentId)
-      .maybeSingle();
-    if(error){throw new Error(error.message);}
-    if(data){throw new Error('Equipment ID must be unique');}
+  // upsert via RPC, fall back to direct asset upsert when RPC absent
+  async function directAssetUpsert(payload){
+    // ensure category
+    let category_uid=null;
+    if(payload.equipment_type){
+      const cat=await supabase.from('asset_category').select('id').eq('name',payload.equipment_type).maybeSingle();
+      if(cat.error){throw cat.error;}
+      if(cat.data?.id){category_uid=cat.data.id;}
+      else{
+        const ins=await supabase.from('asset_category').insert([{name:payload.equipment_type}]).select('id').single();
+        if(ins.error){throw ins.error;}
+        category_uid=ins.data.id;
+      }
+    }
+    const assetRow={
+      asset_code:payload.equipment_id,
+      name:payload.equipment_name,
+      category_uid:category_uid||null,
+      status:payload.status||'Active',
+      calibration_done_on:payload.calibration_done_on||null,
+      calibration_due_on:payload.calibration_due_on||null,
+      area_uid:payload.area_uid||null
+    };
+    if(!payload.asset_id){
+      const ins=await supabase.from('asset').insert([assetRow]).select('id').single();
+      if(ins.error){throw ins.error;}
+      return ins.data.id;
+    }else{
+      const upd=await supabase.from('asset').update(assetRow).eq('id',payload.asset_id).select('id').single();
+      if(upd.error){throw upd.error;}
+      return upd.data.id;
+    }
   }
 
   async function handleSave(e){
     e?.preventDefault?.();
-    if(!form.equipment_id||!form.equipment_name||!selectedArea){
-      toast.error('Equipment ID, Name and Area are required');return;
-    }
+    if(!form.equipment_id||!form.equipment_name||!selectedArea){toast.error('Equipment ID, Name and Area are required');return;}
 
     const payload={
       equipment_id:form.equipment_id,
@@ -177,62 +211,55 @@ export default function EquipmentMaster(){
       calibration_done_on:form.calibration_done_on||null,
       calibration_due_on:form.calibration_due_on||null,
       status:form.status||'Active',
-      area_uid:selectedArea
+      area_uid:selectedArea,            // keep as string; server handles type
+      asset_id:form.id||null            // view.equipment_uid (asset.id) normalized to string
     };
 
     setSaving(true);
     try{
-      if(!form.id){
-        // preflight uniqueness
-        await assertEquipmentIdUniqueOnCreate(payload.equipment_id);
-
-        const op=supabase.from('equipment_master').insert([payload]).select('id');
-        await toast.promise(op,{loading:'Saving equipment...',success:'Equipment added',error:(err)=>err?.message||'Save failed'});
-      }else{
-        // preflight uniqueness excluding self
-        await assertEquipmentIdUniqueOnUpdate(payload.equipment_id,form.id);
-
-        const op=supabase.from('equipment_master').update(payload).eq('id',form.id).select('id');
-        await toast.promise(op,{loading:'Updating equipment...',success:'Equipment updated',error:(err)=>err?.message||'Update failed'});
-      }
+      const call=supabase.rpc('upsert_equipment_like',{
+        p_equipment_id:payload.equipment_id,
+        p_equipment_name:payload.equipment_name,
+        p_equipment_type:payload.equipment_type,
+        p_status:payload.status,
+        p_cal_done:payload.calibration_done_on,
+        p_cal_due:payload.calibration_due_on,
+        p_area_uid:payload.area_uid
+      });
+      const res=await toast.promise(call,{
+        loading:form.id?'Updating equipment...':'Saving equipment...',
+        success:form.id?'Equipment updated':'Equipment added',
+        error:(err)=>err?.message||'Save failed'
+      });
+      if(res?.error||(res&&res.status>=400)){throw res.error||new Error('RPC failed');}
+    }catch(err){
+      // fallback to direct upsert if RPC signature type mismatches (e.g., bigint vs uuid)
+      await toast.promise(
+        directAssetUpsert({
+          ...payload,
+          asset_id:payload.asset_id
+        }),
+        {loading:form.id?'Updating (direct)...':'Saving (direct)...',success:form.id?'Equipment updated':'Equipment added',error:(e)=>e?.message||'Save failed'}
+      );
+    }finally{
+      setSaving(false);
       resetForm();
       setActiveTab('preview');
       await loadAll();
-    }catch(err){
-      toast.error(err?.message||'Operation failed');
-    }finally{
-      setSaving(false);
     }
   }
 
   async function handleDelete(id){
-    if(!id){toast.error('Missing ID');return;}
-    if(!window.confirm('Delete this equipment?')) return;
-    const op=supabase.from('equipment_master').delete().eq('id',id);
-    await toast.promise(op,{loading:'Deleting...',success:'Deleted',error:'Delete failed'});
-    if(form.id===id) resetForm();
+    const rid=toStr(id);
+    if(!rid){toast.error('Missing ID');return;}
+    if(!window.confirm('Delete this equipment (asset)?')) return;
+    const op=supabase.from('asset').delete().eq('id',rid);
+    await toast.promise(op,{loading:'Deleting...',success:'Deleted',error:(e)=>e?.message||'Delete failed'});
+    if(form.id===rid) resetForm();
     await loadAll();
   }
 
-  function handleEdit(v){
-    // v from vw_equipment_master
-    setForm({
-      id:v.equipment_uid,
-      equipment_id:v.equipment_id||'',
-      equipment_name:v.equipment_name||'',
-      equipment_type:v.equipment_type||'',
-      calibration_done_on:v.calibration_done_on||'',
-      calibration_due_on:v.calibration_due_on||'',
-      status:v.equipment_status||'Active'
-    });
-    setSelectedPlant(v.plant_uid||'');
-    setSelectedSubplant(v.subplant_uid||'');
-    setSelectedDepartment(v.department_uid||'');
-    setSelectedArea(v.area_uid||'');
-    setActiveTab('manage');
-    toast.success(`✏️ Editing Equipment: ${v.equipment_id}`);
-  }
-
+  const getType=(r)=>r.equipment_type||r.equip_type||r.category_name||'';
   const dueClass=(isoDate)=>{
     if(!isoDate) return '';
     const due=new Date(isoDate);
@@ -242,6 +269,25 @@ export default function EquipmentMaster(){
     if(due>=today&&due<=next7) return 'bg-yellow-100 text-yellow-800 font-semibold';
     return 'text-green-700';
   };
+
+  function handleEdit(v){
+    const vv=normEqView(v);
+    setForm({
+      id:vv.equipment_uid,
+      equipment_id:vv.equipment_id||'',
+      equipment_name:vv.equipment_name||'',
+      equipment_type:getType(vv)||'',
+      calibration_done_on:vv.calibration_done_on||'',
+      calibration_due_on:vv.calibration_due_on||'',
+      status:vv.status||vv.equipment_status||'Active'
+    });
+    setSelectedPlant(vv.plant_uid||'');
+    setSelectedSubplant(vv.subplant_uid||'');
+    setSelectedDepartment(vv.department_uid||'');
+    setSelectedArea(vv.area_uid||'');
+    setActiveTab('manage');
+    toast.success(`✏️ Editing Equipment: ${vv.equipment_id}`);
+  }
 
   return (
     <div className="p-3 max-w-7xl mx-auto">
@@ -306,11 +352,11 @@ export default function EquipmentMaster(){
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">Calibration Done On</label>
-            <IconInput icon={CalendarCheck} type="date" value={form.calibration_done_on} onChange={(e)=>setForm({...form,calibration_done_on:e.target.value})} placeholder="" color="text-orange-600"/>
+            <IconInput icon={CalendarCheck} type="date" value={form.calibration_done_on} onChange={(e)=>setForm({...form,calibration_done_on:e.target.value})} color="text-orange-600"/>
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">Calibration Due On</label>
-            <IconInput icon={CalendarClock} type="date" value={form.calibration_due_on} onChange={(e)=>setForm({...form,calibration_due_on:e.target.value})} placeholder="" color="text-red-600"/>
+            <IconInput icon={CalendarClock} type="date" value={form.calibration_due_on} onChange={(e)=>setForm({...form,calibration_due_on:e.target.value})} color="text-red-600"/>
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">Status</label>
@@ -408,14 +454,18 @@ export default function EquipmentMaster(){
                     <tr key={r.equipment_uid}>
                       <td className="p-2 border">{r.equipment_id}</td>
                       <td className="p-2 border">{r.equipment_name}</td>
-                      <td className="p-2 border">{r.equipment_type}</td>
+                      <td className="p-2 border">{getType(r)}</td>
                       <td className="p-2 border">{r.calibration_done_on||'—'}</td>
                       <td className={`p-2 border ${dueClass(r.calibration_due_on)}`}>{r.calibration_due_on||'—'}</td>
-                      <td className="p-2 border">{r.area_id} - {r.area_name}</td>
-                      <td className="p-2 border">{r.department_id} - {r.department_name}</td>
-                      <td className="p-2 border">{r.subplant_id} - {r.subplant_name}</td>
-                      <td className="p-2 border">{r.plant_id} - {r.plant_description}</td>
-                      <td className="p-2 border"><StatusBadge status={r.equipment_status}/></td>
+
+                      <td className="p-2 border">{r.area_code||r.area_name?`${r.area_code||''}${r.area_code&&r.area_name?' - ':''}${r.area_name||''}`:'—'}</td>
+                      <td className="p-2 border">{r.department_code||r.department_name?`${r.department_code||''}${r.department_code&&r.department_name?' - ':''}${r.department_name||''}`:'—'}</td>
+                      <td className="p-2 border">{r.subplant_code||r.subplant_name?`${r.subplant_code||''}${r.subplant_code&&r.subplant_name?' - ':''}${r.subplant_name||''}`:'—'}</td>
+                      <td className="p-2 border">{r.plant_code||r.plant_name?`${r.plant_code||''}${r.plant_code&&r.plant_name?' - ':''}${r.plant_name||''}`:'—'}</td>
+
+                      <td className="p-2 border">
+                        <StatusBadge status={r.status||r.equipment_status}/>
+                      </td>
                       <td className="p-2 border">
                         <div className="inline-flex gap-2">
                           <button onClick={()=>handleEdit(r)} className="inline-flex items-center gap-1 px-2 py-1 rounded border text-xs hover:bg-yellow-50 hover:border-yellow-300">

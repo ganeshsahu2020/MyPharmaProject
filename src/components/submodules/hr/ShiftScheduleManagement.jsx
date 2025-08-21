@@ -1,4 +1,5 @@
-import React,{useEffect,useMemo,useState,useRef} from 'react';
+// src/components/submodules/hr/ShiftScheduleManagement.jsx
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {supabase} from '../../../utils/supabaseClient';
 import {useAuth} from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -14,8 +15,7 @@ import logo from '../../../assets/logo.png';
   ShiftScheduleManagement.jsx
   - Views: vw_user_management_ext_v2, vw_department_hierarchy_v2
   - Tables: shift_master, shift_schedule, shift_schedule_employee
-  - Flow: Manager drafts -> submits; HR (same plant/subplant/department) or Admin/Super Admin approves
-  - Print/Preview & Download CSV for Approved weeks, with company header + audit log
+  - Dev tweak: any logged-in user can approve (canApprove=!!authUid)
 */
 
 /* ---------- date helpers ---------- */
@@ -34,36 +34,28 @@ const ShiftScheduleManagement=()=>{
   const [loading,setLoading]=useState(false);
   const [saving,setSaving]=useState(false);
 
-  // hierarchy caches
   const [hier,setHier]=useState([]);
   const [plants,setPlants]=useState([]);
   const [subplants,setSubplants]=useState([]);
   const [departments,setDepartments]=useState([]);
 
-  // selected hierarchy
   const [plantUid,setPlantUid]=useState('');
   const [subplantUid,setSubplantUid]=useState('');
   const [departmentUid,setDepartmentUid]=useState('');
 
-  // templates
   const [templates,setTemplates]=useState([]);
-
-  // current user
   const [userRow,setUserRow]=useState(null);
 
-  // week state
   const [weekOf,setWeekOf]=useState(()=>startOfWeek(new Date()));
   const [rows,setRows]=useState([]);
 
-  // employees
   const [employeeOptions,setEmployeeOptions]=useState([]);
-  const [empMap,setEmpMap]=useState({}); // { 'YYYY-MM-DD': Set<user_id> }
+  const [empMap,setEmpMap]=useState({});
   const [assignOpen,setAssignOpen]=useState(false);
   const [assignDate,setAssignDate]=useState(null);
   const [empSearch,setEmpSearch]=useState('');
 
-  // success banner
-  const [banner,setBanner]=useState(null); // {type:'success'|'error',msg:string}
+  const [banner,setBanner]=useState(null);
 
   const lastLoadRef=useRef({dept:null,week:null});
 
@@ -74,7 +66,9 @@ const ShiftScheduleManagement=()=>{
   const isManager=useMemo(()=>roles.some((r)=>/^(manager|supervisor)$/i.test(r)),[roles]);
   const isManagerOfSelected=useMemo(()=>isManager&&userRow?.department_uid&&departmentUid&&(userRow.department_uid===departmentUid),[isManager,userRow,departmentUid]);
   const isSameUnitHR=useMemo(()=>isHR&&userRow?.plant_uid===plantUid&&userRow?.subplant_uid===subplantUid&&userRow?.department_uid===departmentUid,[isHR,userRow,plantUid,subplantUid,departmentUid]);
-  const canApprove=useMemo(()=>isAdmin||isSameUnitHR,[isAdmin,isSameUnitHR]);
+
+  // DEV MODE: allow any logged-in user to approve
+  const canApprove=useMemo(()=>!!authUid,[authUid]);
 
   const batchStatusVal=useMemo(()=>{if(!rows.length) return 'Draft'; const s=new Set(rows.map((r)=>r.status||'Draft')); return s.size===1?[...s][0]:'Mixed';},[rows]);
 
@@ -89,55 +83,46 @@ const ShiftScheduleManagement=()=>{
   useEffect(()=>{(async()=>{
     setLoading(true);
     try{
-      // current user (v2)
       if(email||authUid){
-        const {data:uData,error:uErr}=await supabase
+        const {data:uData}=await supabase
           .from('vw_user_management_ext_v2')
           .select('*')
           .or(`email.eq.${email},auth_uid.eq.${authUid}`)
           .limit(1)
           .maybeSingle();
-        if(!uErr&&uData){ setUserRow(uData); }
+        if(uData){setUserRow(uData);}
       }
-
-      // hierarchy (v2)
-      const {data:h,error:hErr}=await supabase.from('vw_department_hierarchy_v2').select('*');
-      if(hErr){ toast.error('Failed to load hierarchy'); } else {
-        setHier(h||[]);
-        const pMap=new Map(); (h||[]).forEach((r)=>{pMap.set(r.plant_uid,{id:r.plant_uid,name:r.plant_name});});
+      const {data:h}=await supabase.from('vw_department_hierarchy_v2').select('*');
+      if(h){
+        setHier(h);
+        const pMap=new Map(); h.forEach((r)=>{pMap.set(r.plant_uid,{id:r.plant_uid,name:r.plant_name});});
         setPlants(Array.from(pMap.values()));
       }
-
-      // shifts master
-      const {data:tpl,error:tplErr}=await supabase
+      const {data:tpl}=await supabase
         .from('shift_master')
         .select('shift_code,start_time,end_time,break_mins,status')
         .eq('status','Active')
         .order('shift_code');
-      if(!tplErr){ setTemplates(tpl||[]); }
-    }finally{ setLoading(false); }
+      if(tpl){setTemplates(tpl);}
+    }finally{setLoading(false);}
   })();},[email,authUid]);
 
-  // default selection from user's dept
-  useEffect(()=>{ if(userRow&&hier.length){ const d=hier.find((x)=>x.department_uid===userRow.department_uid); if(d){ setPlantUid(d.plant_uid); setSubplantUid(d.subplant_uid); setDepartmentUid(d.department_uid); } }},[userRow,hier]);
+  useEffect(()=>{if(userRow&&hier.length){const d=hier.find((x)=>x.department_uid===userRow.department_uid); if(d){setPlantUid(d.plant_uid); setSubplantUid(d.subplant_uid); setDepartmentUid(d.department_uid);}}},[userRow,hier]);
 
-  // cascade: subplants
   useEffect(()=>{
     const subs=hier.filter((r)=>plantUid? r.plant_uid===plantUid : true)
       .reduce((acc,r)=>{acc.set(r.subplant_uid,{id:r.subplant_uid,name:r.subplant_name,plant_uid:r.plant_uid}); return acc;},new Map());
     setSubplants(Array.from(subs.values()));
-    if(subplantUid&&!subs.has(subplantUid)){ setSubplantUid(''); }
+    if(subplantUid&&!subs.has(subplantUid)){setSubplantUid('');}
   },[plantUid,hier]);
 
-  // cascade: departments
   useEffect(()=>{
-    const depts=hier.filter((r)=>{ if(plantUid&&r.plant_uid!==plantUid) return false; if(subplantUid&&r.subplant_uid!==subplantUid) return false; return true; })
+    const depts=hier.filter((r)=>{if(plantUid&&r.plant_uid!==plantUid) return false; if(subplantUid&&r.subplant_uid!==subplantUid) return false; return true;})
       .reduce((acc,r)=>{acc.set(r.department_uid,{id:r.department_uid,name:r.department_name}); return acc;},new Map());
     setDepartments(Array.from(depts.values()));
-    if(departmentUid&&!depts.has(departmentUid)){ setDepartmentUid(''); }
+    if(departmentUid&&!depts.has(departmentUid)){setDepartmentUid('');}
   },[plantUid,subplantUid,hier]);
 
-  // employees for department
   useEffect(()=>{(async()=>{
     if(!departmentUid) return;
     const {data,e}=await supabase
@@ -145,7 +130,7 @@ const ShiftScheduleManagement=()=>{
       .select('user_id,full_name,email,department_uid')
       .eq('department_uid',departmentUid)
       .order('full_name');
-    if(e){ toast.error('Failed to load employees'); setEmployeeOptions([]); return; }
+    if(e){toast.error('Failed to load employees'); setEmployeeOptions([]); return;}
     setEmployeeOptions(data||[]);
   })();},[departmentUid]);
 
@@ -163,46 +148,45 @@ const ShiftScheduleManagement=()=>{
         .gte('schedule_date',days[0])
         .lte('schedule_date',days[6])
         .order('schedule_date',{ascending:true});
-      if(error){ toast.error('Failed to load schedule'); return; }
+      if(error){toast.error('Failed to load schedule'); return;}
       const map=new Map((data||[]).map((r)=>[r.schedule_date,r]));
       const merged=days.map((d)=>map.get(d)||{id:null,plant_uid:plantUid,subplant_uid:subplantUid,department_uid:departmentUid,schedule_date:d,shift_code:'',start_time:'',end_time:'',break_mins:0,notes:'',status:'Draft',prepared_by_email:email,prepared_by_uid:userRow?.user_id||null});
       setRows(merged);
 
-      // assignments
       const ids=(data||[]).map((r)=>r.id).filter(Boolean);
       if(ids.length){
-        const {data:asns, error:asnErr}=await supabase
+        const {data:asns,error:asnErr}=await supabase
           .from('shift_schedule_employee')
           .select('schedule_id,employee_uid')
           .in('schedule_id',ids);
-        if(asnErr){ toast.error('Failed to load assignments'); }
+        if(asnErr){toast.error('Failed to load assignments');}
         const schedById=new Map((data||[]).map((r)=>[r.id,r.schedule_date]));
         const m={};
-        (asns||[]).forEach((a)=>{ const d=schedById.get(a.schedule_id); if(!d) return; if(!m[d]) m[d]=new Set(); m[d].add(a.employee_uid); });
+        (asns||[]).forEach((a)=>{const d=schedById.get(a.schedule_id); if(!d) return; if(!m[d]) m[d]=new Set(); m[d].add(a.employee_uid);});
         setEmpMap(m);
       }else{
         setEmpMap({});
       }
       lastLoadRef.current={dept:departmentUid,week:weekOf};
-    }finally{ setLoading(false); }
+    }finally{setLoading(false);}
   })();},[departmentUid,weekOf,plantUid,subplantUid,email,userRow]);
 
   /* ---------- helpers ---------- */
-  const setCell=(date,field,value)=>{ setRows((prev)=>prev.map((r)=>r.schedule_date===date?{...r,[field]:value}:r)); };
+  const setCell=(date,field,value)=>{setRows((prev)=>prev.map((r)=>r.schedule_date===date?{...r,[field]:value}:r));};
 
-  const assignedNames=(date,limit=2)=>{const s=empMap[date]; if(!s||!s.size) return ''; const ids=[...s]; const names=ids.map((id)=>employeeOptions.find((e)=>e.user_id===id)?.full_name).filter(Boolean); if(names.length>limit){ return names.slice(0,limit).join(', ')+' +'+(names.length-limit); } return names.join(', '); };
+  const assignedNames=(date,limit=2)=>{const s=empMap[date]; if(!s||!s.size) return ''; const ids=[...s]; const names=ids.map((id)=>employeeOptions.find((e)=>e.user_id===id)?.full_name).filter(Boolean); if(names.length>limit){return names.slice(0,limit).join(', ')+' +'+(names.length-limit);} return names.join(', ');};
 
-  const applyTemplate=(code)=>{ const tpl=templates.find((t)=>t.shift_code===code); if(!tpl){ toast.error('Template not found'); return; } setRows((prev)=>prev.map((r)=>({...r,shift_code:code,start_time:tpl.start_time,end_time:tpl.end_time,break_mins:tpl.break_mins}))); };
+  const applyTemplate=(code)=>{const tpl=templates.find((t)=>t.shift_code===code); if(!tpl){toast.error('Template not found'); return;} setRows((prev)=>prev.map((r)=>({...r,shift_code:code,start_time:tpl.start_time,end_time:tpl.end_time,break_mins:tpl.break_mins})));};
 
-  const generateWeek=()=>{ const tpl=templates[0]||{shift_code:'G',start_time:'09:00',end_time:'17:00',break_mins:60}; const fresh=weekDates(weekOf).map((d)=>({id:null,plant_uid:plantUid,subplant_uid:subplantUid,department_uid:departmentUid,schedule_date:d,shift_code:tpl.shift_code,start_time:tpl.start_time,end_time:tpl.end_time,break_mins:tpl.break_mins,notes:'',status:'Draft',prepared_by_email:email,prepared_by_uid:userRow?.user_id||null})); setRows(fresh); setEmpMap({}); };
+  const generateWeek=()=>{const tpl=templates[0]||{shift_code:'G',start_time:'09:00',end_time:'17:00',break_mins:60}; const fresh=weekDates(weekOf).map((d)=>({id:null,plant_uid:plantUid,subplant_uid:subplantUid,department_uid:departmentUid,schedule_date:d,shift_code:tpl.shift_code,start_time:tpl.start_time,end_time:tpl.end_time,break_mins:tpl.break_mins,notes:'',status:'Draft',prepared_by_email:email,prepared_by_uid:userRow?.user_id||null})); setRows(fresh); setEmpMap({});};
 
-  const copyLastWeek=async()=>{ if(!departmentUid){ toast.error('Select department'); return; } const srcWeek=startOfWeek(addDays(weekOf,-7)); const srcDays=weekDates(srcWeek); const {data,error}=await supabase.from('shift_schedule').select('id,schedule_date,shift_code,start_time,end_time,break_mins').eq('department_uid',departmentUid).gte('schedule_date',srcDays[0]).lte('schedule_date',srcDays[6]).order('schedule_date',{ascending:true}); if(error){ toast.error('Failed to copy last week'); return; } if(!data?.length){ toast('No data in previous week'); return; } const fresh=weekDates(weekOf).map((d,i)=>({id:null,plant_uid:plantUid,subplant_uid:subplantUid,department_uid:departmentUid,schedule_date:d,shift_code:data[i]?.shift_code||'',start_time:data[i]?.start_time||'',end_time:data[i]?.end_time||'',break_mins:data[i]?.break_mins||0,notes:'',status:'Draft',prepared_by_email:email,prepared_by_uid:userRow?.user_id||null})); setRows(fresh); setEmpMap({}); };
+  const copyLastWeek=async()=>{if(!departmentUid){toast.error('Select department'); return;} const srcWeek=startOfWeek(addDays(weekOf,-7)); const srcDays=weekDates(srcWeek); const {data,error}=await supabase.from('shift_schedule').select('id,schedule_date,shift_code,start_time,end_time,break_mins').eq('department_uid',departmentUid).gte('schedule_date',srcDays[0]).lte('schedule_date',srcDays[6]).order('schedule_date',{ascending:true}); if(error){toast.error('Failed to copy last week'); return;} if(!data?.length){toast('No data in previous week'); return;} const fresh=weekDates(weekOf).map((d,i)=>({id:null,plant_uid:plantUid,subplant_uid:subplantUid,department_uid:departmentUid,schedule_date:d,shift_code:data[i]?.shift_code||'',start_time:data[i]?.start_time||'',end_time:data[i]?.end_time||'',break_mins:data[i]?.break_mins||0,notes:'',status:'Draft',prepared_by_email:email,prepared_by_uid:userRow?.user_id||null})); setRows(fresh); setEmpMap({});};
 
   /* ---------- ensure week exists (for Submit/Approve) ---------- */
   const ensureWeekSaved=async()=>{
     const needSave=rows.some((r)=>!r.id);
-    if(!needSave){ return true; }
-    for(const r of rows){ if(!r.shift_code||!r.start_time||!r.end_time){ toast.error(`Missing fields for ${r.schedule_date}`); return false; } }
+    if(!needSave){return true;}
+    for(const r of rows){if(!r.shift_code||!r.start_time||!r.end_time){toast.error(`Missing fields for ${r.schedule_date}`); return false;}}
     const payload=rows.map((r)=>({
       id:r.id||undefined,
       plant_uid:plantUid,subplant_uid:subplantUid,department_uid:departmentUid,
@@ -211,7 +195,7 @@ const ShiftScheduleManagement=()=>{
       prepared_by_email:r.prepared_by_email||email,prepared_by_uid:r.prepared_by_uid||userRow?.user_id||null
     }));
     const {data,error}=await supabase.from('shift_schedule').upsert(payload,{onConflict:'department_uid,schedule_date'}).select('id,schedule_date');
-    if(error){ toast.error(error.message); return false; }
+    if(error){toast.error(error.message); return false;}
     if(data?.length){
       const idByDate=new Map(data.map((r)=>[r.schedule_date,r.id]));
       setRows((prev)=>prev.map((r)=>({...r,id:idByDate.get(r.schedule_date)||r.id})));
@@ -220,10 +204,10 @@ const ShiftScheduleManagement=()=>{
   };
 
   /* ---------- persistence ---------- */
-  const validateRows=()=>{ for(const r of rows){ if(!r.shift_code||!r.start_time||!r.end_time){ toast.error(`Missing fields for ${r.schedule_date}`); return false; } } return true; };
+  const validateRows=()=>{for(const r of rows){if(!r.shift_code||!r.start_time||!r.end_time){toast.error(`Missing fields for ${r.schedule_date}`); return false;}} return true;};
 
   const saveDraft=async()=>{
-    if(!departmentUid){ toast.error('Select department'); return; }
+    if(!departmentUid){toast.error('Select department'); return;}
     if(!validateRows()) return;
     setSaving(true);
     try{
@@ -235,18 +219,18 @@ const ShiftScheduleManagement=()=>{
         prepared_by_email:r.prepared_by_email||email,prepared_by_uid:r.prepared_by_uid||userRow?.user_id||null
       }));
       const {data,error}=await supabase.from('shift_schedule').upsert(payload,{onConflict:'department_uid,schedule_date'}).select('id,schedule_date');
-      if(error){ toast.error(error.message); return; }
+      if(error){toast.error(error.message); return;}
       if(data?.length){
         const idByDate=new Map(data.map((r)=>[r.schedule_date,r.id]));
         setRows((prev)=>prev.map((r)=>({...r,id:idByDate.get(r.schedule_date)||r.id})));
       }
       toast.success('Week saved as Draft.');
       setBanner({type:'success',msg:'Week saved as Draft.'});
-    }finally{ setSaving(false); }
+    }finally{setSaving(false);}
   };
 
   const setBatchStatus=async(next)=>{
-    if(!departmentUid){ toast.error('Select department'); return; }
+    if(!departmentUid){toast.error('Select department'); return;}
     if(next==='Submitted'||next==='Approved'||next==='Rejected'){
       const ok=await ensureWeekSaved(); if(!ok) return;
     }
@@ -254,59 +238,139 @@ const ShiftScheduleManagement=()=>{
     try{
       const days=weekDates(weekOf);
       const patch={status:next};
-      if(next==='Submitted'){ Object.assign(patch,{approved_by_email:null,approved_by_uid:null,approved_at:null}); }
-      if(next==='Approved'||next==='Rejected'){ Object.assign(patch,{approved_by_email:email,approved_by_uid:userRow?.user_id||null,approved_at:new Date().toISOString()}); }
+      if(next==='Submitted'){Object.assign(patch,{approved_by_email:null,approved_by_uid:null,approved_at:null});}
+      if(next==='Approved'||next==='Rejected'){
+        Object.assign(patch,{
+          approved_by_email:email,
+          approved_by_uid:userRow?.user_id??authUid,
+          approved_at:new Date().toISOString()
+        });
+      }
       const {error}=await supabase
         .from('shift_schedule')
         .update(patch)
         .eq('department_uid',departmentUid)
         .gte('schedule_date',days[0])
         .lte('schedule_date',days[6]);
-      if(error){ toast.error(error.message); return; }
+      if(error){toast.error(error.message); return;}
       const msg=next==='Submitted'?'Week submitted for HR approval.':(next==='Approved'?'Week approved.':'Week rejected.');
       toast.success(msg);
       setBanner({type:'success',msg});
       lastLoadRef.current={dept:null,week:null};
       setWeekOf((w)=>w);
-    }finally{ setSaving(false); }
+    }finally{setSaving(false);}
   };
 
   /* ---------- export helpers (company header + log) ---------- */
-  const companyName=useMemo(()=>userRow?.company_name||'DigitizerX',[userRow]); // fallback
+  const companyName=useMemo(()=>userRow?.company_name||'DigitizerX',[userRow]);
   const plantName=useMemo(()=>plants.find((p)=>p.id===plantUid)?.name||'',[plants,plantUid]);
   const subplantName=useMemo(()=>subplants.find((s)=>s.id===subplantUid)?.name||'',[subplants,subplantUid]);
   const departmentName=useMemo(()=>departments.find((d)=>d.id===departmentUid)?.name||'',[departments,departmentUid]);
 
-  const approvedRows=useMemo(()=>rows.filter((r)=>r.status==='Approved'),[rows]);
   const weekStart=useMemo(()=>weekDates(weekOf)[0],[weekOf]);
   const weekEnd=useMemo(()=>weekDates(weekOf)[6],[weekOf]);
 
   const firstPrepared=useMemo(()=>{
     let pick=null;
-    for(const r of approvedRows){ if(r.prepared_at && (!pick||new Date(r.prepared_at)<new Date(pick.prepared_at))) pick=r; }
+    for(const r of rows){if(r.prepared_at&&(!pick||new Date(r.prepared_at)<new Date(pick.prepared_at))) pick=r;}
     return pick;
-  },[approvedRows]);
+  },[rows]);
 
   const lastApproved=useMemo(()=>{
     let pick=null;
-    for(const r of approvedRows){ if(r.approved_at && (!pick||new Date(r.approved_at)>new Date(pick.approved_at))) pick=r; }
+    for(const r of rows){if(r.approved_at&&(!pick||new Date(r.approved_at)>new Date(pick.approved_at))) pick=r;}
     return pick;
-  },[approvedRows]);
+  },[rows]);
 
-  const csvEscape=(s)=>{
-    const v=(s??'').toString();
-    return /[",\n]/.test(v)? `"${v.replace(/"/g,'""')}"` : v;
+  const csvEscape=(s)=>{const v=(s??'').toString(); return /[",\n]/.test(v)? `"${v.replace(/"/g,'""')}"` : v;};
+
+  /* ---------- Print/Preview: now ALWAYS enabled ---------- */
+  const handlePrintPreview=()=>{
+    const printableRows=rows||[];
+    const rowsHtml=printableRows.map((r)=>`
+      <tr>
+        <td style="padding:6px;border:1px solid #e5e7eb;">${r.schedule_date}</td>
+        <td style="padding:6px;border:1px solid #e5e7eb;">${dowName(r.schedule_date)}</td>
+        <td style="padding:6px;border:1px solid #e5e7eb;">${r.shift_code||''}</td>
+        <td style="padding:6px;border:1px solid #e5e7eb;">${r.start_time||''}</td>
+        <td style="padding:6px;border:1px solid #e5e7eb;">${r.end_time||''}</td>
+        <td style="padding:6px;border:1px solid #e5e7eb; text-align:right;">${r.break_mins||0}</td>
+        <td style="padding:6px;border:1px solid #e5e7eb;">${
+          (empMap[r.schedule_date]? [...empMap[r.schedule_date]]:[])
+            .map((id)=>employeeOptions.find((e)=>e.user_id===id)?.full_name||id)
+            .join(', ')
+        }</td>
+        <td style="padding:6px;border:1px solid #e5e7eb;">${(r.status||'Draft')}</td>
+        <td style="padding:6px;border:1px solid #e5e7eb;">${(r.notes||'').replace(/</g,'&lt;')}</td>
+      </tr>
+    `).join('');
+
+    const html=`
+      <html>
+        <head>
+          <meta charset="utf-8"/>
+          <title>Shift Schedule — ${departmentName||'-'} — ${weekStart} to ${weekEnd}</title>
+          <style>
+            @media print {.no-print{display:none}}
+            body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Noto Sans',sans-serif; color:#111827;}
+            .muted{color:#6b7280}
+            .title{font-weight:700; font-size:18px}
+            .hdr{margin-bottom:8px; display:flex; align-items:center; gap:10px;}
+            table{border-collapse:collapse; width:100%;}
+            th{background:#f3f4f6; text-align:left; padding:6px; border:1px solid #e5e7eb;}
+            td{font-size:12px;}
+            .section{margin-top:12px}
+            img{height:28px}
+          </style>
+        </head>
+        <body>
+          <div class="hdr">
+            <img src="${logo}" alt="Logo"/>
+            <div class="title">${companyName}</div>
+          </div>
+          <div class="hdr" style="margin-bottom:4px;">Shift Schedule — <b>${departmentName||'-'}</b> (${plantName||'-'} / ${subplantName||'-'})</div>
+          <div class="muted">Week: ${weekStart} to ${weekEnd} • Status: ${batchStatusVal}</div>
+
+          <div class="section">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th><th>Day</th><th>Shift</th><th>Start</th><th>End</th><th>Break</th><th>Employees</th><th>Status</th><th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <div class="title" style="font-size:14px;">Log</div>
+            <div class="muted">Prepared by: <b>${firstPrepared?.prepared_by_email||'-'}</b> at ${fmtDT(firstPrepared?.prepared_at)||'-'}</div>
+            <div class="muted">Last approval: <b>${lastApproved?.approved_by_email||'-'}</b> at ${fmtDT(lastApproved?.approved_at)||'-'}</div>
+          </div>
+
+          <div class="section muted">Generated on ${new Date().toLocaleString()}</div>
+
+          <div class="no-print" style="margin-top:12px;">
+            <button onclick="window.print()">Print</button>
+          </div>
+        </body>
+      </html>
+    `;
+    const w=window.open('','_blank');
+    if(!w){toast.error('Popup blocked — allow popups to print.'); return;}
+    w.document.open(); w.document.write(html); w.document.close(); w.focus();
+    setBanner({type:'success',msg:'Print preview opened.'});
   };
 
   const handleDownloadCSV=()=>{
-    if(batchStatusVal!=='Approved'){ toast.error('Only Approved weeks can be exported.'); return; }
+    if(batchStatusVal!=='Approved'){toast.error('Only Approved weeks can be exported.'); return;}
     const header=[
       'Company','Plant','Subplant','Department','Week Start','Week End',
       'Date','Day','Shift Code','Start Time','End Time','Break (min)','Employees','Notes',
       'Prepared By','Prepared At','Approved By','Approved At'
     ];
     const lines=[header.join(',')];
-    approvedRows.forEach((r)=>{
+    rows.filter((r)=>r.status==='Approved').forEach((r)=>{
       const emps=(empMap[r.schedule_date]? [...empMap[r.schedule_date]]:[])
         .map((id)=>employeeOptions.find((e)=>e.user_id===id)?.full_name||id).join('; ');
       const row=[
@@ -328,85 +392,9 @@ const ShiftScheduleManagement=()=>{
     setBanner({type:'success',msg:`CSV downloaded (${fname}).`});
   };
 
-  const handlePrintPreview=()=>{
-    if(batchStatusVal!=='Approved'){ toast.error('Only Approved weeks can be printed.'); return; }
-    const rowsHtml=approvedRows.map((r)=>`
-      <tr>
-        <td style="padding:6px;border:1px solid #e5e7eb;">${r.schedule_date}</td>
-        <td style="padding:6px;border:1px solid #e5e7eb;">${dowName(r.schedule_date)}</td>
-        <td style="padding:6px;border:1px solid #e5e7eb;">${r.shift_code||''}</td>
-        <td style="padding:6px;border:1px solid #e5e7eb;">${r.start_time||''}</td>
-        <td style="padding:6px;border:1px solid #e5e7eb;">${r.end_time||''}</td>
-        <td style="padding:6px;border:1px solid #e5e7eb; text-align:right;">${r.break_mins||0}</td>
-        <td style="padding:6px;border:1px solid #e5e7eb;">${
-          (empMap[r.schedule_date]? [...empMap[r.schedule_date]]:[])
-            .map((id)=>employeeOptions.find((e)=>e.user_id===id)?.full_name||id)
-            .join(', ')
-        }</td>
-        <td style="padding:6px;border:1px solid #e5e7eb;">${(r.notes||'').replace(/</g,'&lt;')}</td>
-      </tr>
-    `).join('');
-
-    const html=`
-      <html>
-        <head>
-          <meta charset="utf-8"/>
-          <title>Shift Schedule — ${departmentName} — ${weekStart} to ${weekEnd}</title>
-          <style>
-            @media print {.no-print{display:none}}
-            body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Noto Sans',sans-serif; color:#111827;}
-            .muted{color:#6b7280}
-            .title{font-weight:700; font-size:18px}
-            .hdr{margin-bottom:8px; display:flex; align-items:center; gap:10px;}
-            table{border-collapse:collapse; width:100%;}
-            th{background:#f3f4f6; text-align:left; padding:6px; border:1px solid #e5e7eb;}
-            td{font-size:12px;}
-            .section{margin-top:12px}
-            img{height:28px}
-          </style>
-        </head>
-        <body>
-          <div class="hdr">
-            <img src="${logo}" alt="Logo"/>
-            <div class="title">${companyName}</div>
-          </div>
-          <div class="hdr" style="margin-bottom:4px;">Shift Schedule — <b>${departmentName||'-'}</b> (${plantName||'-'} / ${subplantName||'-'})</div>
-          <div class="muted">Week: ${weekStart} to ${weekEnd} • Status: Approved</div>
-
-          <div class="section">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th><th>Day</th><th>Shift</th><th>Start</th><th>End</th><th>Break</th><th>Employees</th><th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>${rowsHtml}</tbody>
-            </table>
-          </div>
-
-          <div class="section">
-            <div class="title" style="font-size:14px;">Log</div>
-            <div class="muted">Prepared by: <b>${firstPrepared?.prepared_by_email||'-'}</b> at ${fmtDT(firstPrepared?.prepared_at)||'-'}</div>
-            <div class="muted">Approved by: <b>${lastApproved?.approved_by_email||'-'}</b> at ${fmtDT(lastApproved?.approved_at)||'-'}</div>
-          </div>
-
-          <div class="section muted">Generated on ${new Date().toLocaleString()}</div>
-
-          <div class="no-print" style="margin-top:12px;">
-            <button onclick="window.print()">Print</button>
-          </div>
-        </body>
-      </html>
-    `;
-    const w=window.open('','_blank');
-    if(!w){ toast.error('Popup blocked — allow popups to print.'); return; }
-    w.document.open(); w.document.write(html); w.document.close(); w.focus();
-    setBanner({type:'success',msg:'Print preview opened.'});
-  };
-
   /* ---------- assignments ---------- */
-  const toggleEmp=(date,uid)=>{ setEmpMap((prev)=>{ const s=new Set(prev[date]? [...prev[date]]:[]); if(s.has(uid)){ s.delete(uid); } else { s.add(uid); } return {...prev,[date]:s}; }); };
-  const openAssign=(date)=>{ setAssignDate(date); setAssignOpen(true); setEmpSearch(''); };
+  const toggleEmp=(date,uid)=>{setEmpMap((prev)=>{const s=new Set(prev[date]? [...prev[date]]:[]); if(s.has(uid)){s.delete(uid);} else {s.add(uid);} return {...prev,[date]:s};});};
+  const openAssign=(date)=>{setAssignDate(date); setAssignOpen(true); setEmpSearch('');};
 
   const ensureRowIdForDate=async(date)=>{
     const r=rows.find((x)=>x.schedule_date===date);
@@ -417,33 +405,33 @@ const ShiftScheduleManagement=()=>{
       status:r?.status||'Draft', prepared_by_email:r?.prepared_by_email||email, prepared_by_uid:r?.prepared_by_uid||userRow?.user_id||null
     };
     const {data,error}=await supabase.from('shift_schedule').upsert(payload,{onConflict:'department_uid,schedule_date'}).select('id,schedule_date').maybeSingle();
-    if(error){ throw error; }
-    const id=data?.id; if(id){ setRows((prev)=>prev.map((x)=>x.schedule_date===date?{...x,id}:x)); }
+    if(error){throw error;}
+    const id=data?.id; if(id){setRows((prev)=>prev.map((x)=>x.schedule_date===date?{...x,id}:x));}
     return id;
   };
 
   const saveAssignments=async(date)=>{
     try{
       const scheduleId=await ensureRowIdForDate(date);
-      if(!scheduleId){ toast.error('Could not resolve schedule row'); return; }
+      if(!scheduleId){toast.error('Could not resolve schedule row'); return;}
       const selectedSet=empMap[date]||new Set();
       const {data:existing,error:e1}=await supabase.from('shift_schedule_employee').select('employee_uid').eq('schedule_id',scheduleId);
-      if(e1){ toast.error('Failed to read existing assignments'); return; }
+      if(e1){toast.error('Failed to read existing assignments'); return;}
       const existingIds=new Set((existing||[]).map((x)=>x.employee_uid));
       const toAdd=[...selectedSet].filter((id)=>!existingIds.has(id)).map((uid)=>({schedule_id:scheduleId,employee_uid:uid}));
       const toRemove=[...existingIds].filter((id)=>!selectedSet.has(id));
       if(toAdd.length){
         const {error:e2}=await supabase.from('shift_schedule_employee').upsert(toAdd,{onConflict:'schedule_id,employee_uid'});
-        if(e2){ toast.error('Failed to add employees'); return; }
+        if(e2){toast.error('Failed to add employees'); return;}
       }
       if(toRemove.length){
         const {error:e3}=await supabase.from('shift_schedule_employee').delete().eq('schedule_id',scheduleId).in('employee_uid',toRemove);
-        if(e3){ toast.error('Failed to remove employees'); return; }
+        if(e3){toast.error('Failed to remove employees'); return;}
       }
       toast.success('Assignments saved.');
       setBanner({type:'success',msg:`Assignments saved for ${date}.`});
       setAssignOpen(false);
-    }catch(err){ toast.error(err.message||'Failed to save assignments'); }
+    }catch(err){toast.error(err.message||'Failed to save assignments');}
   };
 
   /* ---------- UI ---------- */
@@ -491,7 +479,6 @@ const ShiftScheduleManagement=()=>{
             <label className="text-sm font-medium">Week of (Mon)</label>
             <input type="date" className="mt-1 w-full border rounded p-2" value={weekOf} onChange={(e)=>setWeekOf(startOfWeek(e.target.value))}/>
           </div>
-          {/* Save button row (wrapped) */}
           <div className="flex flex-wrap gap-2 justify-end md:justify-start">
             <Button onClick={()=>saveDraft()} disabled={saving||!departmentUid||inputsDisabled} className="gap-1 shrink-0">
               <Save className="w-4 h-4"/>{saving?'Saving...':'Save'}
@@ -499,9 +486,7 @@ const ShiftScheduleManagement=()=>{
           </div>
         </div>
 
-        {/* LEFT/RIGHT controls with wrapping to avoid overlap */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end mt-3">
-          {/* LEFT — template tools */}
           <div className="md:col-span-3">
             <label className="text-sm font-medium">Apply template shift</label>
             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -514,7 +499,6 @@ const ShiftScheduleManagement=()=>{
             </div>
           </div>
 
-          {/* RIGHT — status + actions */}
           <div className="md:col-span-3 flex flex-wrap items-center justify-end gap-2 min-w-0">
             <div className="text-sm text-gray-600 flex items-center gap-2 mr-2 whitespace-nowrap min-w-0">
               <Users className="w-4 h-4"/>
@@ -542,10 +526,11 @@ const ShiftScheduleManagement=()=>{
               <XCircle className="w-4 h-4"/>Reject
             </Button>
 
-            {/* Export & Print (Approved only) */}
-            <Button onClick={()=>handlePrintPreview()} disabled={batchStatusVal!=='Approved'} variant="outline" className="gap-1 shrink-0">
+            {/* Print/Preview is ALWAYS enabled now */}
+            <Button onClick={()=>handlePrintPreview()} variant="outline" className="gap-1 shrink-0">
               <Printer className="w-4 h-4"/>Print / Preview
             </Button>
+            {/* CSV export remains Approved-only */}
             <Button onClick={()=>handleDownloadCSV()} disabled={batchStatusVal!=='Approved'} variant="outline" className="gap-1 shrink-0">
               <FileDown className="w-4 h-4"/>Download CSV
             </Button>
@@ -585,7 +570,7 @@ const ShiftScheduleManagement=()=>{
                   <td className="p-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-600">{(empMap[r.schedule_date]?.size)||0} selected</span>
-                      {assignedNames(r.schedule_date) && <span className="text-xs text-gray-500 italic">({assignedNames(r.schedule_date)})</span>}
+                      {assignedNames(r.schedule_date)&&<span className="text-xs text-gray-500 italic">({assignedNames(r.schedule_date)})</span>}
                       <Button size="sm" variant="outline" onClick={()=>{setAssignDate(r.schedule_date); setAssignOpen(true); setEmpSearch('');}} disabled={inputsDisabled}>Manage</Button>
                     </div>
                   </td>
@@ -646,7 +631,7 @@ const ShiftScheduleManagement=()=>{
       )}
 
       <div className="text-xs text-gray-500">
-        <div>Permissions: Managers draft/submit for their own department; HR (same unit) or Admin/Super Admin approve/reject; Approved weeks read-only. Printing & CSV export are available for Approved weeks.</div>
+        <div>Managers draft/submit; any logged-in user can approve in dev mode. Approved weeks read-only. Print/Preview is available for any status; CSV export is restricted to Approved status.</div>
       </div>
     </div>
   );

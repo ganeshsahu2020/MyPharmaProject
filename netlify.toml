@@ -5,6 +5,7 @@ publish = "dist"
 [build.environment]
 NODE_VERSION = "20"
 
+# SPA routing (React Router refresh-safe)
 [[redirects]]
 from = "/*"
 to = "/index.html"

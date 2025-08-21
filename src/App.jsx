@@ -1,39 +1,59 @@
+// src/App.jsx
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import { UOMProvider } from './contexts/UOMContext';
-import { AlertProvider } from './contexts/AlertContext';
+import { Toaster } from 'react-hot-toast';
+
 import Login from './components/Login';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import AuthGuard from './components/AuthGuard';
 import UpdatePassword from './components/UpdatePassword';
 import ModuleRenderer from './components/ModuleRenderer';
+import EquipmentDetail from './pages/EquipmentDetail';
+import PMWorkOrderDetail from './pages/PMWorkOrderDetail';
+import ScanPage from './routes/ScanPage';
 
-const App = () => {
+import PartDetail from './pages/PartDetail';   // ← new
+import BinDetail from './pages/BinDetail';     // ← new
+
+import { UOMProvider } from './contexts/UOMContext'; // ← wrap everything
+
+export default function App() {
   return (
-    <AuthProvider>
+    <>
+      <Toaster position="top-right" />
       <UOMProvider>
-        <AlertProvider>
-          <Routes>
-            {/* Login Route */}
-            <Route path="/login" element={<Login />} />
-            {/* Update Password Route */}
-            <Route path="/update-password" element={<UpdatePassword />} />
-            {/* Authenticated Routes */}
-            <Route path="/" element={<AuthGuard><LandingPage /></AuthGuard>}>
-              {/* Default Dashboard Route */}
-              <Route index element={<Dashboard />} />
-              {/* Module and Submodule Routes */}
-              <Route path=":moduleKey" element={<ModuleRenderer />} />
-              <Route path=":moduleKey/:submoduleKey" element={<ModuleRenderer />} />
-            </Route>
-            {/* Redirect to Home if no match */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AlertProvider>
-      </UOMProvider>
-    </AuthProvider>
-  );
-};
+        <Routes>
+          {/* Public/auth routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/update-password" element={<UpdatePassword />} />
 
-export default App;
+          {/* Public scan route (keep public, or move into AuthGuard if desired) */}
+          <Route path="/scan" element={<ScanPage />} />
+
+          {/* Equipment detail by internal id (public) */}
+          <Route path="/equipment/:id" element={<EquipmentDetail />} />
+
+          {/* Authenticated app shell */}
+          <Route path="/" element={<AuthGuard><LandingPage /></AuthGuard>}>
+            <Route index element={<Dashboard />} />
+
+            {/* PM Work Order detail (HR code or UUID) */}
+            <Route path="pm/wo/:ref" element={<PMWorkOrderDetail />} />
+
+            {/* Inventory deep-links (from labels / scanner) */}
+            <Route path="inventory/part/:id" element={<PartDetail />} />
+            <Route path="inventory/part/by-code/:code" element={<PartDetail />} />
+            <Route path="inventory/bin/:plant_id/:bin_code" element={<BinDetail />} />
+
+            {/* Dynamic module routes */}
+            <Route path=":moduleKey" element={<ModuleRenderer />} />
+            <Route path=":moduleKey/:submoduleKey" element={<ModuleRenderer />} />
+          </Route>
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </UOMProvider>
+    </>
+  );
+}

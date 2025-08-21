@@ -1,31 +1,28 @@
-import { defineConfig } from 'vite';
+// vite.config.ts
+import {defineConfig} from 'vite';
 import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
-import path from 'path';
-import svgr from 'vite-plugin-svgr';  // Import the svgr plugin
+import tailwind from '@tailwindcss/vite';
+import svgr from 'vite-plugin-svgr';
+import {fileURLToPath} from 'url';
+import {dirname,resolve} from 'path';
 
-// https://vitejs.dev/config/
+// Ensure __dirname works in ESM (Windows-safe)
+const __filename=fileURLToPath(import.meta.url);
+const __dirname=dirname(__filename);
+
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    svgr(),  // Add the svgr plugin here
-  ],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),  // Alias for @
-    },
+  plugins:[react(),tailwind(),svgr()],
+  resolve:{
+    alias:{'@':resolve(__dirname,'src')}
   },
-  build: {
-    outDir: 'dist', // Where to put the built files
-    assetsDir: 'assets', // Directory for assets like images, fonts, etc.
-    sourcemap: true, // Enable source maps for debugging in development
+  build:{
+    outDir:'dist',
+    assetsDir:'assets',
+    sourcemap:true
   },
-  server: {
-    hmr: {
-      overlay: false, // Disable the full-screen error overlay
-    },
-    port: 5173, // Optional: You can specify a port if needed
-    open: true, // Optional: Automatically open the browser when the dev server starts
-  },
+  server:{
+    hmr:{overlay:false},
+    port:5173,
+    open:true
+  }
 });
