@@ -1,3 +1,4 @@
+// src/components/submodules/hr/LeaveManagement.jsx
 import React from 'react';
 import { Card } from '../../ui/card';
 

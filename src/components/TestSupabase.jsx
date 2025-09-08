@@ -1,3 +1,4 @@
+// src/components/TestSupabase.jsx
 import { useEffect, useState } from 'react';
 
 const TestSupabase = () => {
@@ -10,6 +11,7 @@ const TestSupabase = () => {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/check-supabase`);
         const json = await res.json();
         console.log('🔍 API Response:', json);
+
         if (json.status === 'connected') {
           setStatus('✅ Connected to Supabase via Backend');
           setData(json.data);

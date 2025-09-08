@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../utils/supabaseClient';
-import { Button } from '../../ui/button';
+import Button from '../../ui/button';  // Default import
 import toast, { Toaster } from 'react-hot-toast';
 import {
   PackageSearch, Search, Plus, Upload, Save, Edit3, Trash2, Printer, Download,
@@ -22,7 +22,7 @@ const downloadText = (filename, text, mime = 'text/csv') => {
 };
 const csvLine = (arr) =>
   arr.map((v) => String(v ?? '').replace(/"/g, '""'))
-     .map((v) => /[,\"\n]/.test(v) ? `"${v}"` : v).join(',');
+    .map((v) => /[,\"\n]/.test(v) ? `"${v}"` : v).join(',');
 const parseCSV = (text) => {
   const [h, ...lines] = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (!h) return [];
@@ -38,16 +38,16 @@ const nowIso = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
 /* demo/template CSV */
 const PART_CSV_HEADERS = ['part_code', 'part_name', 'description', 'uom_code', 'active', 'min_qty', 'max_qty', 'reorder_point', 'plant_code', 'bin_code', 'qty_on_hand', 'supplier_name', 'lead_time_days'];
 const DEMO_ROWS = [
-  ['FLT-HEPA-24x24','HEPA Filter 24x24x12 H13','Terminal HEPA for cleanroom AHU','EA',true,2,20,4,'Plant1','BIN-A1',6,'ABC Filters',14],
-  ['FLT-PREF-20x20','Pre-Filter 20x20x2 G4','Coarse pre-filter for AHU stage-1','EA',true,10,100,20,'Plant1','BIN-A2',12,'CleanAir Supplies',7],
-  ['GSK-TRIC-1.5','Tri-Clamp Gasket 1.5" PTFE','PTFE sanitary gasket for TC ferrules','EA',true,20,200,40,'Plant1','BIN-B1',15,'PharmSeal',5],
-  ['O-RING-EPDM-112','O-Ring EPDM AS568-112','EPDM O-ring for pump head','EA',true,30,300,60,'Plant1','BIN-B2',80,'SealsRUs',3],
-  ['TUBE-SIL-1/4','Silicone Tubing 1/4" ID','Peristaltic grade silicone tubing','M',true,10,100,20,'Plant1','BIN-C1',18,'BioFlex Tubes',10],
-  ['UV-LAMP-RO-254NM','UV Lamp 254nm (RO)','UV disinfection lamp for RO loop','EA',true,1,10,2,'Plant1','BIN-W1',1,'AquaPure Systems',21],
-  ['GAUGE-0-6BAR','Pressure Gauge 0–6 bar SS316','1/4" BSP bottom mount','EA',true,2,10,2,'Plant1','BIN-M1',3,'Instrumetrix',14],
-  ['BRG-6203-2RS','Bearing 6203-2RS','Double-sealed deep groove bearing','EA',true,4,40,8,'Plant1','BIN-M2',6,'MotionParts Co.',9],
-  ['PROBE-PT100-3M','Temperature Probe PT100 3m','Class A stainless probe','EA',true,2,12,3,'Plant1','BIN-E1',2,'ThermoSense',12],
-  ['COIL-SOL-24V','Solenoid Valve Coil 24V DC','Standard coil for SS316 valve','EA',true,5,50,10,'Plant1','BIN-V1',9,'ValveTech',8],
+  ['FLT-HEPA-24x24', 'HEPA Filter 24x24x12 H13', 'Terminal HEPA for cleanroom AHU', 'EA', true, 2, 20, 4, 'Plant1', 'BIN-A1', 6, 'ABC Filters', 14],
+  ['FLT-PREF-20x20', 'Pre-Filter 20x20x2 G4', 'Coarse pre-filter for AHU stage-1', 'EA', true, 10, 100, 20, 'Plant1', 'BIN-A2', 12, 'CleanAir Supplies', 7],
+  ['GSK-TRIC-1.5', 'Tri-Clamp Gasket 1.5" PTFE', 'PTFE sanitary gasket for TC ferrules', 'EA', true, 20, 200, 40, 'Plant1', 'BIN-B1', 15, 'PharmSeal', 5],
+  ['O-RING-EPDM-112', 'O-Ring EPDM AS568-112', 'EPDM O-ring for pump head', 'EA', true, 30, 300, 60, 'Plant1', 'BIN-B2', 80, 'SealsRUs', 3],
+  ['TUBE-SIL-1/4', 'Silicone Tubing 1/4" ID', 'Peristaltic grade silicone tubing', 'M', true, 10, 100, 20, 'Plant1', 'BIN-C1', 18, 'BioFlex Tubes', 10],
+  ['UV-LAMP-RO-254NM', 'UV Lamp 254nm (RO)', 'UV disinfection lamp for RO loop', 'EA', true, 1, 10, 2, 'Plant1', 'BIN-W1', 1, 'AquaPure Systems', 21],
+  ['GAUGE-0-6BAR', 'Pressure Gauge 0–6 bar SS316', '1/4" BSP bottom mount', 'EA', true, 2, 10, 2, 'Plant1', 'BIN-M1', 3, 'Instrumetrix', 14],
+  ['BRG-6203-2RS', 'Bearing 6203-2RS', 'Double-sealed deep groove bearing', 'EA', true, 4, 40, 8, 'Plant1', 'BIN-M2', 6, 'MotionParts Co.', 9],
+  ['PROBE-PT100-3M', 'Temperature Probe PT100 3m', 'Class A stainless probe', 'EA', true, 2, 12, 3, 'Plant1', 'BIN-E1', 2, 'ThermoSense', 12],
+  ['COIL-SOL-24V', 'Solenoid Valve Coil 24V DC', 'Standard coil for SS316 valve', 'EA', true, 5, 50, 10, 'Plant1', 'BIN-V1', 9, 'ValveTech', 8],
 ];
 const downloadPartsTemplate = () =>
   downloadText('parts_import_template.csv', [csvLine(PART_CSV_HEADERS), csvLine(DEMO_ROWS[0])].join('\n'));
@@ -59,6 +59,7 @@ const ScanModal = ({ open, onClose, onResult }) => {
   const [supported, setSupported] = useState(false);
   const [manual, setManual] = useState('');
   const videoRef = useRef(null); const rafRef = useRef(null); const streamRef = useRef(null); const detRef = useRef(null);
+
   useEffect(() => {
     if (!open) return;
     const boot = async () => {
@@ -87,6 +88,7 @@ const ScanModal = ({ open, onClose, onResult }) => {
     };
     boot(); return () => stop();
   }, [open, onResult]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 bg-black/50 z-50 grid place-items-center">
@@ -100,7 +102,12 @@ const ScanModal = ({ open, onClose, onResult }) => {
         ) : (
           <div className="text-sm">
             <div className="mb-2 text-red-600">QR camera scanning not supported. Paste payload below.</div>
-            <textarea className="w-full h-40 border rounded p-2" placeholder="Paste QR payload here" value={manual} onChange={(e) => setManual(e.target.value)} />
+            <textarea
+              className="w-full h-40 border rounded p-2"
+              placeholder="Paste QR payload here"
+              value={manual}
+              onChange={(e) => setManual(e.target.value)}
+            />
             <div className="mt-2 text-right">
               <Button onClick={() => { if (manual.trim()) { onResult(manual.trim()); onClose(); } }}>Use Text</Button>
             </div>
@@ -116,6 +123,7 @@ const SingleBinModal = ({ open, onClose, onPrint, defaults }) => {
   const [plant, setPlant] = useState(defaults?.plant_id || 'Plant1');
   const [bin, setBin] = useState(defaults?.bin || '');
   useEffect(() => { if (open) { setPlant(defaults?.plant_id || 'Plant1'); setBin(defaults?.bin || ''); } }, [open, defaults]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center">
@@ -125,8 +133,18 @@ const SingleBinModal = ({ open, onClose, onPrint, defaults }) => {
           <Button variant="outline" onClick={onClose}>Close</Button>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <input className="border rounded p-2" placeholder="Plant (e.g., Plant1)" value={plant} onChange={(e) => setPlant(e.target.value)} />
-          <input className="border rounded p-2" placeholder="Bin (e.g., BIN-A1)" value={bin} onChange={(e) => setBin(e.target.value)} />
+          <input
+            className="border rounded p-2"
+            placeholder="Plant (e.g., Plant1)"
+            value={plant}
+            onChange={(e) => setPlant(e.target.value)}
+          />
+          <input
+            className="border rounded p-2"
+            placeholder="Bin (e.g., BIN-A1)"
+            value={bin}
+            onChange={(e) => setBin(e.target.value)}
+          />
         </div>
         <div className="mt-3 text-right">
           <Button onClick={() => onPrint(plant, bin)}><Printer size={16} className="mr-1" />Print</Button>
@@ -179,7 +197,6 @@ const InventorySparePartsManagement = () => {
       const m = {}; (r.data || []).forEach((x) => { m[x.id] = x.plant_id; }); setPlantIdByUid(m);
     }
   };
-
   const resolveUomUid = async (uom_code) => {
     if (!uom_code) return null;
     const found = (uoms || []).find(u => String(u.uom_code || '').toLowerCase() === String(uom_code).toLowerCase());
@@ -188,13 +205,11 @@ const InventorySparePartsManagement = () => {
     if (q.error) throw q.error;
     return q.data?.id || null;
   };
-
   const resolvePlantUid = async (plantId) => {
     const p = await supabase.from('plant_master').select('id').ilike('plant_id', plantId).maybeSingle();
     if (p.error) throw p.error;
     return p.data?.id || null;
   };
-
   const loadPartLocations = async (part_uid) => {
     const r = await supabase.from('part_location')
       .select('id,plant_uid,bin_code,min_qty,max_qty,qty_on_hand,reorder_point,supplier_name,lead_time_days')
@@ -315,20 +330,17 @@ const InventorySparePartsManagement = () => {
     setLocRows([{ id: null, plant_id: 'Plant1', plant_uid: null, bin_code: '', min_qty: 0, max_qty: 0, qty_on_hand: 0, reorder_point: 0, supplier_name: '', lead_time_days: '' }]);
     setTab('details');
     setEditing(true);
-
     // then load locations
     (async () => {
       const rows = await loadPartLocations(r.id);
       setLocRows(rows.length ? rows : [{ id: null, plant_id: 'Plant1', plant_uid: null, bin_code: '', min_qty: 0, max_qty: 0, qty_on_hand: 0, reorder_point: 0, supplier_name: '', lead_time_days: '' }]);
     })();
   };
-
   const openNew = () => {
     setForm({ id: null, part_code: '', part_name: '', description: '', uom_code: '', is_quarantine: false, active: true });
     setLocRows([{ id: null, plant_id: 'Plant1', plant_uid: null, bin_code: '', min_qty: 0, max_qty: 0, qty_on_hand: 0, reorder_point: 0, supplier_name: '', lead_time_days: '' }]);
     setTab('details'); setEditing(true);
   };
-
   const savePartAndLocations = async () => {
     await toast.promise((async () => {
       if (!form.part_code.trim() || !form.part_name.trim()) throw new Error('Part Code & Name required');
@@ -366,7 +378,6 @@ const InventorySparePartsManagement = () => {
       await fetchAll();
     })(), { loading: 'Saving…', success: 'Saved', error: (e) => e?.message || 'Save failed' });
   };
-
   const deletePart = async (id, code) => {
     const ok = confirm(`Delete part "${code}"? This also removes its locations.`); if (!ok) return;
     await toast.promise(supabase.from('part_master').delete().eq('id', id), {
@@ -460,7 +471,6 @@ const InventorySparePartsManagement = () => {
     printHTMLViaIframe(html);
     toast.success('Opened label preview');
   };
-
   const printBinLabelsPreview = async (plant_id = 'Plant1', { w = 50, h = 38, cols = 3 } = {}) => {
     const p = await supabase.from('plant_master').select('id').ilike('plant_id', plant_id).maybeSingle();
     if (p.error || !p.data) { toast.error('Plant not found'); return; }
@@ -468,7 +478,6 @@ const InventorySparePartsManagement = () => {
     if (r.error) { toast.error(r.error.message); return; }
     const bins = Array.from(new Set((r.data || []).map((x) => x.bin_code).filter(Boolean)));
     if (!bins.length) { toast.error('No bins to print'); return; }
-
     const logoURL = await getLogoDataURL(logo);
     const qrImgs = await Promise.all(bins.map((bin) =>
       makeQR(JSON.stringify({ type: 'bin', plant_id, bin_code: bin }))
@@ -492,7 +501,6 @@ const InventorySparePartsManagement = () => {
     printHTMLViaIframe(html);
     toast.success('Opened label preview');
   };
-
   const printSingleBinLabel = async (plant_id = 'Plant1', bin) => {
     if (!bin) { toast.error('Enter a bin'); return; }
     const logoURL = await getLogoDataURL(logo);
@@ -546,7 +554,6 @@ const InventorySparePartsManagement = () => {
       return { type: 'unknown', raw: txt };
     }
   };
-
   const onScanResult = (text) => {
     const payload = parseQR(text);
     if (scanTarget === 'part') {
@@ -591,7 +598,6 @@ const InventorySparePartsManagement = () => {
           .eq('part_uid', t.part_uid).eq('plant_uid', srcPlantUid);
         qs = t.src_bin ? qs.eq('bin_code', t.src_bin) : qs.is('bin_code', null);
         const src = await qs.maybeSingle(); if (src.error || !src.data) throw new Error('Source location not found');
-
         const srcQty = Number(src.data.qty_on_hand || 0); if (srcQty < qty) throw new Error(`Insufficient stock at source. QOH=${srcQty}`);
 
         let qd = supabase.from('part_location').select('id,qty_on_hand')
@@ -619,7 +625,6 @@ const InventorySparePartsManagement = () => {
         if (tx.error) throw tx.error;
         toast.success('Transfer complete');
       }
-
       setTransfer((prev) => ({ ...prev, qty: 0 }));
       await Promise.all([fetchAll(), loadQohTotals()]);
     } catch (e) { toast.error(e.message || 'Transfer failed'); }
@@ -641,7 +646,6 @@ const InventorySparePartsManagement = () => {
     const partCode = searchParams.get('partCode') || searchParams.get('part_code');
     const plant = searchParams.get('plant') || searchParams.get('plant_id');
     const bin = searchParams.get('bin') || searchParams.get('bin_code');
-
     let acted = false;
     (async () => {
       if (part || partCode) {
@@ -661,7 +665,6 @@ const InventorySparePartsManagement = () => {
         if (row) { openEdit(row); acted = true; }
         else if (part || partCode) { toast.error('Part not found'); }
       }
-
       if (plant && bin) {
         setSingleDefaults({ plant_id: plant, bin });
         setTransfer(t => ({ ...t, dst_plant_id: plant, dst_bin: bin }));
@@ -670,7 +673,7 @@ const InventorySparePartsManagement = () => {
     })().finally(() => {
       if (acted) {
         const next = new URLSearchParams(searchParams);
-        ['part','part_uid','part_id','partCode','part_code','plant','plant_id','bin','bin_code'].forEach(k => next.delete(k));
+        ['part', 'part_uid', 'part_id', 'partCode', 'part_code', 'plant', 'plant_id', 'bin', 'bin_code'].forEach(k => next.delete(k));
         setSearchParams(next, { replace: true });
       }
     });
@@ -703,13 +706,16 @@ const InventorySparePartsManagement = () => {
           <div className="flex items-center gap-2 whitespace-nowrap px-2 py-2">
             <div className="relative shrink-0">
               <Search size={14} className="absolute left-2 top-2.5 text-indigo-600" />
-              <input className="border rounded pl-7 pr-2 py-1 text-sm" placeholder="Search by code or name" value={q} onChange={(e) => setQ(e.target.value)} />
+              <input
+                className="border rounded pl-7 pr-2 py-1 text-sm"
+                placeholder="Search by code or name"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
             </div>
-
             <Button variant="outline" onClick={() => fetchAll()} title="Reload lists" className="shrink-0">
               <RefreshCw size={16} className="mr-1" />Reload
             </Button>
-
             <label className="inline-flex items-center gap-1 cursor-pointer shrink-0" title="Import parts CSV">
               <Upload size={16} /> Import CSV
               <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={importCSV} disabled={busy} />
@@ -720,24 +726,35 @@ const InventorySparePartsManagement = () => {
             <Button variant="outline" onClick={downloadDemoCSV} className="shrink-0">
               <Download size={16} className="mr-1" />Demo CSV
             </Button>
-
             <Button variant="outline" onClick={() => printPartLabelsPreview(filtered)} className="shrink-0">
               <Printer size={16} className="mr-1" />Preview Part Labels
             </Button>
             <Button variant="outline" onClick={() => printBinLabelsPreview('Plant1')} className="shrink-0">
               <Printer size={16} className="mr-1" />Preview Bin Labels
             </Button>
-            <Button variant="outline" onClick={() => { setSingleDefaults({ plant_id: 'Plant1', bin: '' }); setSingleBinOpen(true); }} className="shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => { setSingleDefaults({ plant_id: 'Plant1', bin: '' }); setSingleBinOpen(true); }}
+              className="shrink-0"
+            >
               <Printer size={16} className="mr-1" />Bin Label
             </Button>
-
-            <Button variant="outline" onClick={() => { setScanTarget('part'); setScanOpen(true); }} title="Scan Part" className="shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => { setScanTarget('part'); setScanOpen(true); }}
+              title="Scan Part"
+              className="shrink-0"
+            >
               <ScanLine size={16} className="mr-1" />Scan Part
             </Button>
-            <Button variant="outline" onClick={() => { setScanTarget('destbin'); setScanOpen(true); }} title="Scan Bin" className="shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => { setScanTarget('destbin'); setScanOpen(true); }}
+              title="Scan Bin"
+              className="shrink-0"
+            >
               <QrCode size={16} className="mr-1" />Scan Bin
             </Button>
-
             <div className="ml-auto" />
             <Button onClick={openNew} className="shrink-0"><Plus size={16} className="mr-1" />New Part</Button>
           </div>
@@ -819,26 +836,59 @@ const InventorySparePartsManagement = () => {
               ))}
               {!low.length && (<tr><td className="p-2 text-gray-500" colSpan={5}>No low stock.</td></tr>)}
             </tbody>
-
           </table>
 
           {/* Quick transfer */}
           <div className="p-3 border-t text-sm">
             <div className="font-semibold mb-2">Quick Bin Transfer</div>
             <div className="flex flex-wrap items-center gap-2">
-              <input className="border rounded p-2 w-40" placeholder="Part Code or UID" value={transfer.part_code} onChange={(e) => setTransfer({ ...transfer, part_code: e.target.value })} />
-              <select className="border rounded p-2" value={transfer.plant_id} onChange={(e) => setTransfer({ ...transfer, plant_id: e.target.value })}>
+              <input
+                className="border rounded p-2 w-40"
+                placeholder="Part Code or UID"
+                value={transfer.part_code}
+                onChange={(e) => setTransfer({ ...transfer, part_code: e.target.value })}
+              />
+              <select
+                className="border rounded p-2"
+                value={transfer.plant_id}
+                onChange={(e) => setTransfer({ ...transfer, plant_id: e.target.value })}
+              >
                 {plants.map((p) => (<option key={p.id} value={p.plant_id}>{p.plant_id}</option>))}
               </select>
-              <input className="border rounded p-2 w-28" placeholder="From Bin" value={transfer.src_bin} onChange={(e) => setTransfer({ ...transfer, src_bin: e.target.value })} />
+              <input
+                className="border rounded p-2 w-28"
+                placeholder="From Bin"
+                value={transfer.src_bin}
+                onChange={(e) => setTransfer({ ...transfer, src_bin: e.target.value })}
+              />
               <span className="opacity-70"><MoveRight size={16} /></span>
-              <select className="border rounded p-2" value={transfer.dst_plant_id} onChange={(e) => setTransfer({ ...transfer, dst_plant_id: e.target.value })}>
+              <select
+                className="border rounded p-2"
+                value={transfer.dst_plant_id}
+                onChange={(e) => setTransfer({ ...transfer, dst_plant_id: e.target.value })}
+              >
                 {plants.map((p) => (<option key={p.id} value={p.plant_id}>{p.plant_id}</option>))}
               </select>
-              <input className="border rounded p-2 w-28" placeholder="To Bin" value={transfer.dst_bin} onChange={(e) => setTransfer({ ...transfer, dst_bin: e.target.value })} />
-              <input className="border rounded p-2 w-24" type="number" step="any" placeholder="Qty" value={transfer.qty} onChange={(e) => setTransfer({ ...transfer, qty: e.target.value })} />
-              <Button variant="outline" onClick={() => { setScanTarget('part'); setScanOpen(true); }} title="Scan Part"><ScanLine size={16} className="mr-1" />Part</Button>
-              <Button variant="outline" onClick={() => { setScanTarget('destbin'); setScanOpen(true); }} title="Scan Bin"><QrCode size={16} className="mr-1" />Bin</Button>
+              <input
+                className="border rounded p-2 w-28"
+                placeholder="To Bin"
+                value={transfer.dst_bin}
+                onChange={(e) => setTransfer({ ...transfer, dst_bin: e.target.value })}
+              />
+              <input
+                className="border rounded p-2 w-24"
+                type="number"
+                step="any"
+                placeholder="Qty"
+                value={transfer.qty}
+                onChange={(e) => setTransfer({ ...transfer, qty: e.target.value })}
+              />
+              <Button variant="outline" onClick={() => { setScanTarget('part'); setScanOpen(true); }} title="Scan Part">
+                <ScanLine size={16} className="mr-1" />Part
+              </Button>
+              <Button variant="outline" onClick={() => { setScanTarget('destbin'); setScanOpen(true); }} title="Scan Bin">
+                <QrCode size={16} className="mr-1" />Bin
+              </Button>
               <Button onClick={doBinTransfer}><MoveRight size={16} className="mr-1" />Transfer</Button>
             </div>
           </div>
@@ -871,19 +921,51 @@ const InventorySparePartsManagement = () => {
 
             {tab === 'details' && (
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <input className="border p-2 rounded" placeholder="Part Code *" value={form.part_code} onChange={(e) => setForm({ ...form, part_code: e.target.value })} />
-                <input className="border p-2 rounded" placeholder="Part Name *" value={form.part_name} onChange={(e) => setForm({ ...form, part_name: e.target.value })} />
-                <input className="border p-2 rounded col-span-2" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                <input
+                  className="border p-2 rounded"
+                  placeholder="Part Code *"
+                  value={form.part_code}
+                  onChange={(e) => setForm({ ...form, part_code: e.target.value })}
+                />
+                <input
+                  className="border p-2 rounded"
+                  placeholder="Part Name *"
+                  value={form.part_name}
+                  onChange={(e) => setForm({ ...form, part_name: e.target.value })}
+                />
+                <input
+                  className="border p-2 rounded col-span-2"
+                  placeholder="Description"
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                />
                 <div className="flex gap-2">
-                  <select className="border p-2 rounded w-full" value={form.uom_code} onChange={(e) => setForm({ ...form, uom_code: e.target.value })} disabled={uomLoading}>
+                  <select
+                    className="border p-2 rounded w-full"
+                    value={form.uom_code}
+                    onChange={(e) => setForm({ ...form, uom_code: e.target.value })}
+                    disabled={uomLoading}
+                  >
                     <option value="">{uomLoading ? 'Loading UOMs…' : 'Select UOM…'}</option>
                     {uomOptions.sort((a, b) => a.code.localeCompare(b.code)).map((u) => (
                       <option key={u.id} value={u.code}>{u.code} — {u.name}</option>
                     ))}
                   </select>
                 </div>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /> Active</label>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!form.is_quarantine} onChange={(e) => setForm({ ...form, is_quarantine: e.target.checked })} /> Quarantine</label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={!!form.active}
+                    onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                  /> Active
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={!!form.is_quarantine}
+                    onChange={(e) => setForm({ ...form, is_quarantine: e.target.checked })}
+                  /> Quarantine
+                </label>
                 <div className="col-span-2 mt-2 text-right">
                   <Button onClick={savePartAndLocations}><Save size={16} className="mr-1" />Save</Button>
                 </div>
@@ -892,7 +974,10 @@ const InventorySparePartsManagement = () => {
 
             {tab === 'locations' && (
               <div className="mt-4">
-                <div className="mb-2 flex justify-between"><div className="font-semibold">Locations</div><Button onClick={addLocRow}><Plus size={16} className="mr-1" />Add Row</Button></div>
+                <div className="mb-2 flex justify-between">
+                  <div className="font-semibold">Locations</div>
+                  <Button onClick={addLocRow}><Plus size={16} className="mr-1" />Add Row</Button>
+                </div>
                 <div className="overflow-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50">
@@ -904,7 +989,11 @@ const InventorySparePartsManagement = () => {
                       {locRows.map((row, idx) => (
                         <tr key={idx} className="border-t">
                           <td className="p-2">
-                            <select className="border rounded p-1" value={row.plant_id} onChange={(e) => updateLocRow(idx, 'plant_id', e.target.value)}>
+                            <select
+                              className="border rounded p-1"
+                              value={row.plant_id}
+                              onChange={(e) => updateLocRow(idx, 'plant_id', e.target.value)}
+                            >
                               {plants.map((p) => (<option key={p.id} value={p.plant_id}>{p.plant_id}</option>))}
                             </select>
                           </td>
@@ -935,24 +1024,46 @@ const InventorySparePartsManagement = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="w-28">From Plant</label>
-                  <select className="border rounded p-2" value={transfer.plant_id} onChange={(e) => setTransfer({ ...transfer, plant_id: e.target.value })}>
+                  <select
+                    className="border rounded p-2"
+                    value={transfer.plant_id}
+                    onChange={(e) => setTransfer({ ...transfer, plant_id: e.target.value })}
+                  >
                     {plants.map((p) => (<option key={p.id} value={p.plant_id}>{p.plant_id}</option>))}
                   </select>
                   <label className="w-16 text-right">Bin</label>
-                  <input className="border rounded p-2 flex-1" value={transfer.src_bin} onChange={(e) => setTransfer({ ...transfer, src_bin: e.target.value })} />
+                  <input
+                    className="border rounded p-2 flex-1"
+                    value={transfer.src_bin}
+                    onChange={(e) => setTransfer({ ...transfer, src_bin: e.target.value })}
+                  />
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="w-28">To Plant</label>
-                  <select className="border rounded p-2" value={transfer.dst_plant_id} onChange={(e) => setTransfer({ ...transfer, dst_plant_id: e.target.value })}>
+                  <select
+                    className="border rounded p-2"
+                    value={transfer.dst_plant_id}
+                    onChange={(e) => setTransfer({ ...transfer, dst_plant_id: e.target.value })}
+                  >
                     {plants.map((p) => (<option key={p.id} value={p.plant_id}>{p.plant_id}</option>))}
                   </select>
                   <label className="w-16 text-right">Bin</label>
-                  <input className="border rounded p-2 flex-1" value={transfer.dst_bin} onChange={(e) => setTransfer({ ...transfer, dst_bin: e.target.value })} />
+                  <input
+                    className="border rounded p-2 flex-1"
+                    value={transfer.dst_bin}
+                    onChange={(e) => setTransfer({ ...transfer, dst_bin: e.target.value })}
+                  />
                   <Button onClick={() => { setScanTarget('destbin'); setScanOpen(true); }}><QrCode size={16} className="mr-1" />Scan Bin</Button>
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="w-28">Qty</label>
-                  <input className="border rounded p-2 w-32" type="number" step="any" value={transfer.qty} onChange={(e) => setTransfer({ ...transfer, qty: e.target.value })} />
+                  <input
+                    className="border rounded p-2 w-32"
+                    type="number"
+                    step="any"
+                    value={transfer.qty}
+                    onChange={(e) => setTransfer({ ...transfer, qty: e.target.value })}
+                  />
                   <Button onClick={doBinTransfer}><MoveRight size={16} className="mr-1" />Transfer</Button>
                 </div>
               </div>
@@ -960,7 +1071,6 @@ const InventorySparePartsManagement = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

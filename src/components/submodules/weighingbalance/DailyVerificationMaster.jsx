@@ -1,3 +1,4 @@
+// ✅ File: src/components/submodules/weighingbalance/DailyVerificationMaster.jsx
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../utils/supabaseClient';
 import toast from 'react-hot-toast';
@@ -17,9 +18,13 @@ const DailyVerificationMaster = () => {
   }, [selectedBalance]);
 
   const fetchBalances = async () => {
-    const { data, error } = await supabase.from('weighing_balance_master').select('id, balance_id, description').order('balance_id');
+    const { data, error } = await supabase
+      .from('weighing_balance_master')
+      .select('id, balance_id, description')
+      .order('balance_id');
+
     if (error) toast.error('Error fetching balances');
-    else setBalances(data);
+    else setBalances(data || []);
   };
 
   const fetchVerifications = async () => {
@@ -28,43 +33,104 @@ const DailyVerificationMaster = () => {
       .select('*')
       .eq('balance_uid', selectedBalance)
       .order('std_weight_no');
+
     if (error) toast.error('Error fetching verifications');
-    else setVerifications(data);
+    else setVerifications(data || []);
+  };
+
+  const computeRanges = (row) => {
+    const sw = Number(row.standard_weight) || 0;
+    const lim = Number(row.set_limit) || 0; // % value; 1 => 1%, 0.01 => 0.01%
+    const opr = sw * (lim / 100);
+    const min = sw - opr;
+    const max = sw + opr;
+    return {
+      operating_range_kg: parseFloat(opr.toFixed(3)),
+      min_operating_range: parseFloat(min.toFixed(3)),
+      max_operating_range: parseFloat(max.toFixed(3)),
+    };
   };
 
   const handleChange = (i, field, value) => {
-    const newValue = parseFloat(value) || 0;
-    setVerifications(prev => {
+    const newValue = parseFloat(value);
+    setVerifications((prev) => {
       const updated = [...prev];
-      updated[i][field] = newValue;
-      if (field === 'standard_weight' || field === 'set_limit') {
-        updated[i].operating_range_kg = parseFloat((updated[i].standard_weight * (updated[i].set_limit / 100)).toFixed(3));
-      }
-      updated[i].min_operating_range = parseFloat((updated[i].standard_weight - updated[i].operating_range_kg).toFixed(3));
-      updated[i].max_operating_range = parseFloat((updated[i].standard_weight + updated[i].operating_range_kg).toFixed(3));
+      const row = { ...updated[i], [field]: Number.isFinite(newValue) ? newValue : 0 };
+      const ranges = computeRanges(row);
+      updated[i] = { ...row, ...ranges };
       return updated;
     });
   };
 
   const handleSave = async () => {
-    const updates = verifications.map(v =>
-      supabase.from('balance_daily_verification')
-        .update({
-          standard_weight: v.standard_weight,
-          set_limit: v.set_limit,
-          operating_range_kg: v.operating_range_kg,
-          min_operating_range: v.min_operating_range,
-          max_operating_range: v.max_operating_range
-        })
-        .eq('id', v.id)
+    if (!selectedBalance) {
+      toast.error('Select a balance first');
+      return;
+    }
+
+    // Ensure computed fields are in-sync before saving
+    const rows = verifications.map((v) => ({ ...v, ...computeRanges(v) }));
+
+    const toUpdate = rows.filter((r) => r.id);
+    const toInsert = rows
+      .filter((r) => !r.id)
+      .map((r) => ({
+        balance_uid: selectedBalance,
+        std_weight_no: r.std_weight_no,
+        standard_weight: r.standard_weight,
+        set_limit: r.set_limit,
+        operating_range_kg: r.operating_range_kg,
+        min_operating_range: r.min_operating_range,
+        max_operating_range: r.max_operating_range,
+      }));
+
+    await toast.promise(
+      (async () => {
+        // Insert new rows (if any)
+        if (toInsert.length) {
+          const { error: insErr } = await supabase
+            .from('balance_daily_verification')
+            .insert(toInsert);
+          if (insErr) throw insErr;
+        }
+
+        // Update existing rows (one-by-one due to differing values/ids)
+        if (toUpdate.length) {
+          const updates = toUpdate.map((v) =>
+            supabase
+              .from('balance_daily_verification')
+              .update({
+                standard_weight: v.standard_weight,
+                set_limit: v.set_limit,
+                operating_range_kg: v.operating_range_kg,
+                min_operating_range: v.min_operating_range,
+                max_operating_range: v.max_operating_range,
+              })
+              .eq('id', v.id)
+          );
+          const results = await Promise.all(updates);
+          const err = results.find((r) => r.error)?.error;
+          if (err) throw err;
+        }
+
+        await fetchVerifications();
+      })(),
+      { loading: 'Saving...', success: 'Saved changes', error: 'Save failed' }
     );
-    await Promise.all(updates);
-    toast.success('Saved changes');
-    fetchVerifications();
   };
 
   const handleDelete = async (id) => {
-    const { error } = await supabase.from('balance_daily_verification').delete().eq('id', id);
+    // If the row isn't saved yet (no id), remove it from UI only
+    if (!id) {
+      setVerifications((prev) => prev.filter((v) => v.id));
+      return;
+    }
+
+    const { error } = await supabase
+      .from('balance_daily_verification')
+      .delete()
+      .eq('id', id);
+
     if (error) toast.error('Delete failed');
     else {
       toast.success('Row deleted');
@@ -73,16 +139,18 @@ const DailyVerificationMaster = () => {
   };
 
   const handleAddRow = () => {
-    const nextStdNo = verifications.length + 1;
-    const newRow = {
+    if (!selectedBalance) {
+      toast.error('Select a balance first');
+      return;
+    }
+    const nextStdNo = (verifications[verifications.length - 1]?.std_weight_no || 0) + 1;
+    const base = {
       std_weight_no: nextStdNo,
       standard_weight: 0,
-      set_limit: 0.01,
-      operating_range_kg: 0,
-      min_operating_range: 0,
-      max_operating_range: 0
+      set_limit: 0.01, // percentage (0.01 => 0.01%)
     };
-    setVerifications(prev => [...prev, newRow]);
+    const ranges = computeRanges(base);
+    setVerifications((prev) => [...prev, { ...base, ...ranges }]);
   };
 
   return (
@@ -98,13 +166,17 @@ const DailyVerificationMaster = () => {
           className="border p-2 rounded w-full sm:w-96 text-center"
         >
           <option value="">Select Balance</option>
-          {balances.map(b => (
-            <option key={b.id} value={b.id}>{b.balance_id} - {b.description}</option>
+          {balances.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.balance_id} - {b.description}
+            </option>
           ))}
         </select>
+
         <button
           onClick={handleAddRow}
-          className="bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2"
+          className="bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2 disabled:opacity-50"
+          disabled={!selectedBalance}
         >
           <PlusCircle size={16} /> Add Row
         </button>
@@ -125,36 +197,58 @@ const DailyVerificationMaster = () => {
           </thead>
           <tbody>
             {verifications.map((v, i) => (
-              <tr key={i} className="even:bg-gray-50">
+              <tr key={v.id ?? `tmp-${i}`} className="even:bg-gray-50">
                 <td className="border p-2 text-center">{v.std_weight_no}</td>
+
                 <td className="border p-2">
                   <input
                     type="number"
-                    value={v.standard_weight || ''}
+                    step="0.001"
+                    value={v.standard_weight ?? ''}
                     onChange={(e) => handleChange(i, 'standard_weight', e.target.value)}
                     className="w-full border p-1 rounded text-center"
                   />
                 </td>
+
                 <td className="border p-2">
                   <input
                     type="number"
-                    value={v.set_limit || ''}
+                    step="0.01"
+                    value={v.set_limit ?? ''}
                     onChange={(e) => handleChange(i, 'set_limit', e.target.value)}
                     className="w-full border p-1 rounded text-center"
                   />
                 </td>
+
                 <td className="border p-2 text-center">
-  {(v.operating_range_kg ?? (v.standard_weight * (v.set_limit / 100))).toFixed(3)}
-</td>
-                <td className="border p-2 text-center">{v.min_operating_range?.toFixed(3)}</td>
-                <td className="border p-2 text-center">{v.max_operating_range?.toFixed(3)}</td>
+                  {
+                    (
+                      ((v.operating_range_kg ?? (v.standard_weight * (v.set_limit / 100))) || 0)
+                    ).toFixed(3)
+                  }
+                </td>
+                <td className="border p-2 text-center">{(v.min_operating_range ?? 0).toFixed(3)}</td>
+                <td className="border p-2 text-center">{(v.max_operating_range ?? 0).toFixed(3)}</td>
+
                 <td className="border p-2 text-center">
-                  <button onClick={() => handleDelete(v.id)} className="text-red-600 hover:text-red-800">
+                  <button
+                    onClick={() => handleDelete(v.id)}
+                    className="text-red-600 hover:text-red-800 inline-flex items-center gap-1"
+                    title={v.id ? 'Delete row' : 'Remove unsaved row'}
+                  >
                     <Trash2 size={16} />
                   </button>
                 </td>
               </tr>
             ))}
+
+            {verifications.length === 0 && selectedBalance && (
+              <tr>
+                <td colSpan={7} className="text-center p-4 text-gray-500">
+                  No rows yet. Click “Add Row” to create one.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

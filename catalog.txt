@@ -1,0 +1,217 @@
+1) App
+   - Settings: app_settings
+
+2) Application
+   - General: application
+
+3) Area
+   - Master: area_master
+
+4) Asset
+   - Category: asset_category
+   - General: asset
+   - Migration: asset_migration_batch, asset_migration_map
+   - Tag: asset_tag, asset_tag_map
+
+5) Attendance
+   - Correction: attendance_correction_request
+   - General: attendance
+   - Punch: attendance_punch
+
+6) Audit
+   - Event: audit_event
+
+7) Balance
+   - Daily: balance_daily_verification
+   - Monthly: balance_monthly_calibration, balance_monthly_calibration_log
+
+8) Breakdown
+   - Attachment: breakdown_attachment
+   - Capa: breakdown_capa
+   - Rca: breakdown_rca
+   - Spares: breakdown_spares_used
+   - Ticket: breakdown_ticket, breakdown_ticket_spares
+
+9) Calibration
+   - Event: calibration_event
+   - Schedule: calibration_schedule
+
+10) Candidate
+   - General: candidate
+
+11) Capa
+   - General: capa
+
+12) Change
+   - Request: change_request
+
+13) Checklist
+   - Link: checklist_link_registry
+   - Master: checklist_master
+   - Template: checklist_template
+
+14) Daily
+   - Verification: daily_verification_log
+
+15) Department
+   - Master: department_master
+
+16) Deviation
+   - General: deviation
+
+17) Doc
+   - Counters: doc_counters
+
+18) Docs
+   - Chunks: docs_chunks
+
+19) Electronic
+   - Signature: electronic_signature
+
+20) Ems
+   - Alarm: ems_alarm
+   - Reading: ems_reading
+   - Tag: ems_tag
+
+21) Equipment
+   - Master: equipment_master
+
+22) Fx
+   - Rates: fx_rates
+
+23) Hr
+   - Announcement: hr_announcement
+   - Document: hr_document
+   - Pay: hr_pay_rate
+   - Settings: hr_settings
+
+24) Interview
+   - Round: interview_round
+
+25) Invoice
+   - Lines: invoice_lines
+
+26) Invoices
+   - General: invoices
+
+27) Job
+   - Post: job_post
+   - Safety: job_safety_log
+
+28) Label
+   - Master: label_master
+
+29) Leave
+   - Request: leave_request
+   - Type: leave_type
+
+30) Location
+   - Master: location_master
+
+31) Maintenance
+   - Event: maintenance_event
+
+32) Material
+   - Prices: material_prices
+   - Vendors: material_vendors
+
+33) Materials
+   - General: materials
+
+34) Module
+   - Master: module_master
+
+35) Part
+   - Location: part_location
+   - Master: part_master
+   - Txn: part_txn
+
+36) Payroll
+   - Biweekly: payroll_biweekly
+   - General: payroll
+   - Rate: payroll_rate
+
+37) Performance
+   - Review: performance_review
+
+38) Plant
+   - Master: plant_master
+
+39) Pm
+   - Assignment: pm_assignment
+   - Occurrence: pm_occurrence
+   - Template: pm_template
+
+40) Procurement
+   - Invoice: vendor_invoices
+
+41) Product
+   - Bom: product_bom, product_bom_version_lines, product_bom_versions
+
+42) Products
+   - General: products
+
+43) Profiles
+   - General: profiles
+
+44) Purchase
+   - Order: purchase_order_lines
+   - Orders: purchase_orders
+
+45) Rc
+   - Application: rc_application
+   - Candidate: rc_candidate
+   - Interview: rc_interview
+   - Job: rc_job
+
+46) Role
+   - Management: role_management
+
+47) Shift
+   - Master: shift_master
+   - Schedule: shift_schedule, shift_schedule_employee
+
+48) Standard
+   - Weight: standard_weight_master
+
+49) Stg
+   - Vw: stg_vw_equipment_master
+
+50) Sub
+   - Module: sub_module_master
+
+51) Subplant
+   - Master: subplant_master
+
+52) Trainer
+   - Master: trainer_master
+
+53) Training
+   - Participant: training_participant
+   - Session: training_session
+
+54) Uom
+   - Master: uom_master
+
+55) User
+   - Management: user_management
+
+56) Users
+   - General: users
+
+57) Vendor
+   - Categories: vendor_categories
+
+58) Vendors
+   - General: vendors
+
+59) Weighing
+   - Balance: weighing_balance_master, weighing_balance_master_upload
+
+60) Weightbox
+   - Master: weightbox_master
+
+61) Work
+   - Order: work_order, work_order_comment
+
+

@@ -1,3 +1,6 @@
+// src/components/layout/Topbar.jsx
+import React from 'react';
+
 const Topbar = () => {
   return (
     <header className="bg-white shadow flex items-center justify-between px-6 py-3">

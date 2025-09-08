@@ -3,43 +3,42 @@ import React,{useEffect,useState} from 'react';
 import {supabase} from '../../../utils/supabaseClient';
 import toast from 'react-hot-toast';
 
-const RoleManagement = () => {
-  const [employees,setEmployees] = useState([]);
-  const [modules,setModules] = useState([]);
-  const [search,setSearch] = useState('');
-  const [debouncedSearch,setDebouncedSearch] = useState('');
-  const [showDropdown,setShowDropdown] = useState(true);
-  const [selectedEmployee,setSelectedEmployee] = useState(null);
-  const [expandedModules,setExpandedModules] = useState({});
-  const [loading,setLoading] = useState(false);
-
-  const [form,setForm] = useState({
+const RoleManagement=()=>{
+  const [employees,setEmployees]=useState([]);
+  const [modules,setModules]=useState([]);
+  const [search,setSearch]=useState('');
+  const [debouncedSearch,setDebouncedSearch]=useState('');
+  const [showDropdown,setShowDropdown]=useState(true);
+  const [selectedEmployee,setSelectedEmployee]=useState(null);
+  const [expandedModules,setExpandedModules]=useState({});
+  const [loading,setLoading]=useState(false);
+  const [form,setForm]=useState({
     employee_id:'',
     role:[],
     designation:[],
     permissions:{}
   });
 
-  const rightsOptions = ['View','Edit','Update','Delete'];
-  const designationOptions = ['Doer','Checker','Approver'];
+  const rightsOptions=['View','Edit','Update','Delete'];
+  const designationOptions=['Doer','Checker','Approver'];
 
   // ✅ Fetch employees + modules via RPC
   useEffect(()=>{
-    const fetchData = async()=>{
-      try {
-        const {data:users,error:uErr} = await supabase
+    const fetchData=async()=>{
+      try{
+        const {data:users,error:uErr}=await supabase
           .from('user_management')
           .select('employee_id,first_name,last_name,email');
         if(uErr) throw uErr;
 
-        const {data:mods,error:mErr} = await supabase
+        const {data:mods,error:mErr}=await supabase
           .rpc('get_modules_with_submodules');
         if(mErr) throw mErr;
 
         setEmployees(users||[]);
-        setModules(Array.isArray(mods) ? mods : (mods ?? []));
-      } catch(err) {
-        console.error('❌ Error fetching data:', err.message);
+        setModules(Array.isArray(mods)?mods:(mods??[]));
+      }catch(err){
+        console.error('❌ Error fetching data:',err.message);
         toast.error('Failed to load role management data');
       }
     };
@@ -55,18 +54,22 @@ const RoleManagement = () => {
   // ✅ Load role data when employee selected
   useEffect(()=>{
     const loadRoleData=async()=>{
-      if(!selectedEmployee)return;
-      const {data} = await supabase
+      if(!selectedEmployee) return;
+      const {data}=await supabase
         .from('role_management')
         .select('*')
         .eq('employee_id',selectedEmployee.employee_id)
         .single();
+
       let rightsData={};
       if(data?.rights){
         try{
-          rightsData = typeof data.rights==='string' ? JSON.parse(data.rights) : data.rights;
-        }catch{rightsData={};}
+          rightsData=typeof data.rights==='string'?JSON.parse(data.rights):data.rights;
+        }catch{
+          rightsData={};
+        }
       }
+
       setForm({
         employee_id:selectedEmployee.employee_id,
         role:data?.role||[],
@@ -80,7 +83,7 @@ const RoleManagement = () => {
   const toggleArrayValue=(field,value)=>{
     setForm(prev=>({
       ...prev,
-      [field]: prev[field].includes(value)
+      [field]:prev[field].includes(value)
         ? prev[field].filter(v=>v!==value)
         : [...prev[field],value]
     }));
@@ -92,7 +95,7 @@ const RoleManagement = () => {
       const updated=current.includes(right)
         ? current.filter(r=>r!==right)
         : [...current,right];
-      return{...prev,permissions:{...prev.permissions,[code]:updated}};
+      return {...prev,permissions:{...prev.permissions,[code]:updated}};
     });
   };
 
@@ -111,15 +114,15 @@ const RoleManagement = () => {
         rights:form.permissions
       },{onConflict:['employee_id']}),
       {
-        loading: 'Saving role management...',
-        success: '✅ Roles and permissions saved!',
-        error: '❌ Failed to save roles'
+        loading:'Saving role management...',
+        success:'✅ Roles and permissions saved!',
+        error:'❌ Failed to save roles'
       }
     );
     setLoading(false);
   };
 
-  const filteredEmployees = employees.filter(emp =>
+  const filteredEmployees=employees.filter(emp=>
     `${emp.employee_id} ${emp.first_name} ${emp.last_name} ${emp.email}`
       .toLowerCase()
       .includes(debouncedSearch.toLowerCase())
@@ -137,7 +140,7 @@ const RoleManagement = () => {
     setSelectedEmployee(null);
     setForm({employee_id:'',role:[],designation:[],permissions:{}});
     setShowDropdown(true);
-    toast('Employee selection cleared', {icon:'ℹ️'});
+    toast('Employee selection cleared',{icon:'ℹ️'});
   };
 
   const toggleModuleExpand=(moduleId)=>{
@@ -148,17 +151,17 @@ const RoleManagement = () => {
     <div className="p-3 max-w-6xl mx-auto">
       <h2 className="text-lg font-bold mb-3">Role Management</h2>
 
-      {!selectedEmployee && (
+      {!selectedEmployee&&(
         <div className="mb-3">
           <label className="block mb-1 text-sm font-medium">Search Employee</label>
           <input
             type="text"
             placeholder="Search by Employee ID, Name or Email"
             value={search}
-            onChange={e=>setSearch(e.target.value)}
+            onChange={(e)=>setSearch(e.target.value)}
             className="w-full border p-1 rounded text-sm"
           />
-          {showDropdown && debouncedSearch && (
+          {showDropdown&&debouncedSearch&&(
             <div className="border rounded max-h-40 overflow-y-auto bg-white shadow mt-1 text-sm">
               {filteredEmployees.map(emp=>(
                 <div
@@ -169,7 +172,7 @@ const RoleManagement = () => {
                   {emp.employee_id} - {emp.first_name} {emp.last_name} ({emp.email})
                 </div>
               ))}
-              {filteredEmployees.length===0 && (
+              {filteredEmployees.length===0&&(
                 <div className="p-1 text-gray-500">No matching employees</div>
               )}
             </div>
@@ -177,7 +180,7 @@ const RoleManagement = () => {
         </div>
       )}
 
-      {selectedEmployee && (
+      {selectedEmployee&&(
         <div className="p-3 border rounded bg-gray-50 text-sm">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-semibold">
@@ -190,7 +193,11 @@ const RoleManagement = () => {
           <div className="flex flex-wrap gap-3 mb-3">
             {['Super Admin','Admin','HR','Manager','Supervisor','Operator','QA','Engineering'].map(r=>(
               <label key={r} className="flex items-center gap-1">
-                <input type="checkbox" checked={form.role.includes(r)} onChange={()=>toggleArrayValue('role',r)} />
+                <input
+                  type="checkbox"
+                  checked={form.role.includes(r)}
+                  onChange={()=>toggleArrayValue('role',r)}
+                />
                 {r}
               </label>
             ))}
@@ -200,7 +207,11 @@ const RoleManagement = () => {
           <div className="flex flex-wrap gap-3 mb-3">
             {designationOptions.map(d=>(
               <label key={d} className="flex items-center gap-1">
-                <input type="checkbox" checked={form.designation.includes(d)} onChange={()=>toggleArrayValue('designation',d)} />
+                <input
+                  type="checkbox"
+                  checked={form.designation.includes(d)}
+                  onChange={()=>toggleArrayValue('designation',d)}
+                />
                 {d}
               </label>
             ))}
@@ -215,9 +226,10 @@ const RoleManagement = () => {
                   onClick={()=>toggleModuleExpand(module.module_id)}
                   className="w-full text-left font-bold text-blue-600 text-sm"
                 >
-                  {expandedModules[module.module_id] ? '▼' : '▶'} {module.module_name}
+                  {expandedModules[module.module_id]?'▼':'▶'} {module.module_name}
                 </button>
-                {expandedModules[module.module_id] && module.submodules.map(sm=>(
+
+                {expandedModules[module.module_id]&&(module.submodules||[]).map(sm=>(
                   <div key={sm.submodule_id} className="ml-3 mb-1">
                     <div className="font-medium text-xs">{sm.submodule_name}</div>
                     <div className="flex gap-3 ml-3 mt-1">
@@ -225,7 +237,7 @@ const RoleManagement = () => {
                         <label key={rt} className="flex items-center gap-1 text-xs">
                           <input
                             type="checkbox"
-                            checked={form.permissions[sm.submodule_id]?.includes(rt) || false}
+                            checked={form.permissions[sm.submodule_id]?.includes(rt)||false}
                             onChange={()=>togglePermission(sm.submodule_id,rt)}
                           />
                           {rt}
@@ -243,7 +255,7 @@ const RoleManagement = () => {
             disabled={loading}
             className={`bg-green-600 text-white px-3 py-1 rounded text-sm ${loading?'opacity-50 cursor-not-allowed':''}`}
           >
-            {loading ? 'Saving...' : 'Save Role Management'}
+            {loading?'Saving...':'Save Role Management'}
           </button>
         </div>
       )}

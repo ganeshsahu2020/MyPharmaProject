@@ -1,4 +1,4 @@
-// ✅ File: UpdatePassword.jsx
+﻿// src/components/UpdatePassword.jsx
 import { useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -14,11 +14,8 @@ const UpdatePassword = () => {
       toast.error('⚠️ Password must be at least 6 characters');
       return;
     }
-
     setLoading(true);
-
     const { error } = await supabase.auth.updateUser({ password });
-
     if (error) {
       toast.error('❌ Reset failed');
       console.error(error.message);
@@ -26,15 +23,15 @@ const UpdatePassword = () => {
       toast.success('✅ Password updated');
       navigate('/login'); // Redirect after success
     }
-
     setLoading(false);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-4 text-center text-blue-700">Reset Your Password</h2>
-
+        <h2 className="text-2xl font-bold mb-4 text-center text-blue-700">
+          Reset Your Password
+        </h2>
         <input
           type="password"
           placeholder="Enter new password"
@@ -42,7 +39,6 @@ const UpdatePassword = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-
         <button
           onClick={handleReset}
           disabled={loading || password.length < 6}

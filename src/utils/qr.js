@@ -11,9 +11,12 @@ export const qrForRow = (r) => tokenForRow(r);
 export async function openQRForRow(r) {
   const token = tokenForRow(r);
   if (!token) return alert('No qr_token/public_token on this record.');
+
   const dataUrl = await QRCode.toDataURL(token, { margin: 0 });
+
   const w = window.open('', '_blank', 'width=360,height=420,noopener,noreferrer');
   if (!w) return alert('Popup blocked');
+
   w.document.write(`
     <!doctype html><title>QR</title>
     <style>

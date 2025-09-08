@@ -1,15 +1,13 @@
 // src/components/submodules/Engineering/AssetManagement.jsx
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {supabase} from '../../../utils/supabaseClient';
-import {Button} from '../../ui/button';
+import Button from '../../ui/button';  // Default import
 import toast,{Toaster} from 'react-hot-toast';
-
 import {
   Search,Plus,Upload,Save,Edit3,ShieldCheck,Package,AlertTriangle,Database,RefreshCw,
   Trash2,Info,X,Printer,FileDown,Download,CheckSquare,Square,QrCode,
   Tag,Layers,CalendarCheck,CalendarClock,Building2,Factory,Briefcase,Grid3X3,Copy,ExternalLink
 } from 'lucide-react';
-
 import QRCode from 'qrcode';
 import logo from '../../../assets/logo.png';
 import {openQRForRow} from '../../../utils/qr'; // ← keep open action; labels use token-only QR now
@@ -19,15 +17,10 @@ import {openQRForRow} from '../../../utils/qr'; // ← keep open action; labels 
 /* ────────────────────────────────────────────────────────────────────────── */
 const APP_ORIGIN=typeof window!=='undefined'?window.location.origin:'';
 const EQUIP_ROUTE_PREFIX='/equipment/';
-
 // Prefer deriving from env; fallback to your project ref (used only for comments)
-const SUPA_URL=
-  (typeof import.meta!=='undefined'&&import.meta.env?.VITE_SUPABASE_URL)||
-  'https://ymjnholeztepjnbcbjcr.supabase.co';
-
+const SUPA_URL=(typeof import.meta!=='undefined'&&import.meta.env?.VITE_SUPABASE_URL)||'https://ymjnholeztepjnbcbjcr.supabase.co';
 /** Public QR landing page (Storage) — used only for auto-barcode backfill */
 const PUBLIC_QR_PAGE='https://ymjnholeztepjnbcbjcr.supabase.co/storage/v1/object/public/qr/index.html';
-
 // Toggle for auto-barcode backfill (unchanged behavior)
 const PREFER_PUBLIC=true;
 
@@ -80,9 +73,7 @@ const IconInput=({icon:Icon,value,onChange,placeholder,type='text',required=fals
     />
   </div>
 );
-
 const ChevronDownFake=()=>(<svg className="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></svg>);
-
 const IconSelect=({icon:Icon,value,onChange,children,disabled=false,leftColor='text-blue-600'})=>(
   <div className="relative">
     <div className={`absolute inset-y-0 left-2 flex items-center pointer-events-none ${leftColor}`}>
@@ -115,7 +106,6 @@ const FALLBACK_CATEGORIES=[
   'Utility Equipment',
   'Filling and Sealing Equipment'
 ];
-
 /* 🚫 Words that must NEVER be used as Category names */
 const DISALLOWED_CATEGORY_NAMES=new Set(['portable','immovable']);
 
@@ -150,7 +140,6 @@ const downloadAssetTemplate=()=>{
 const printAssetLabels=async(rows,{w=62,h=29,cols=2,useQR=true}={})=>{
   const pick=(r,keys)=>{for(const k of keys){const v=r?.[k];if(v!==undefined&&v!==null&&String(v).trim()!=='')return String(v);}return '';};
   const short=(s)=>!s?'':(s.length>12?`${s.slice(0,4)}…${s.slice(-4)}`:s);
-
   const getLogoDataURL=async()=>{
     try{
       const res=await fetch(logo);
@@ -166,29 +155,28 @@ const printAssetLabels=async(rows,{w=62,h=29,cols=2,useQR=true}={})=>{
   const items=[];
   for(const r of rows||[]){
     // === TOKEN-ONLY PAYLOAD (no URLs) ===
-    const token = r.qr_token || r.public_token || null;
-    const fallbackCode = r.asset_code ? `EQ:${r.asset_code}` : '';
-    const payload = useQR ? (token || fallbackCode) : fallbackCode; // when QR off, we still show code text block
-
+    const token=r.qr_token||r.public_token||null;
+    const fallbackCode=r.asset_code?`EQ:${r.asset_code}`:'';
+    const payload=useQR?(token||fallbackCode):fallbackCode; // when QR off, we still show code text block
     if(!payload) continue;
     items.push({
       payload,
-      title: pick(r,['name','equipment_name']) || pick(r,['asset_code','equipment_id']),
-      equipId: pick(r,['asset_code','equipment_id']),
-      caption: token ? `QR • ${short(token)}` : (fallbackCode || '')
+      title:pick(r,['name','equipment_name'])||pick(r,['asset_code','equipment_id']),
+      equipId:pick(r,['asset_code','equipment_id']),
+      caption:token?`QR • ${short(token)}`:(fallbackCode||'')
     });
   }
   if(!items.length){alert('No rows with a token or asset code to print.');return;}
 
   let qrSrc=[];
   if(useQR){
-    try{qrSrc=await Promise.all(items.map((it)=>QRCode.toDataURL(it.payload,{margin:0})));}catch{qrSrc=items.map(()=> '');}
+    try{qrSrc=await Promise.all(items.map((it)=>QRCode.toDataURL(it.payload,{margin:0})));}
+    catch{qrSrc=items.map(()=> '');}
   }else{
     qrSrc=items.map(()=> '');
   }
 
   const logoURL=await getLogoDataURL();
-
   const grid=items.map((it,i)=>`
     <div class="label">
       <div class="hdr">
@@ -234,10 +222,8 @@ const printAssetLabels=async(rows,{w=62,h=29,cols=2,useQR=true}={})=>{
   iframe.style.position='fixed'; iframe.style.right='0'; iframe.style.bottom='0';
   iframe.style.width='0'; iframe.style.height='0'; iframe.style.border='0';
   document.body.appendChild(iframe);
-
   const doc=iframe.contentDocument||iframe.contentWindow?.document;
   doc.open(); doc.write(html); doc.close();
-
   iframe.onload=async()=>{
     const w=iframe.contentWindow;
     try{await w.document.fonts?.ready;}catch{}
@@ -442,74 +428,90 @@ const MigrationsPanel=({open,onClose,setSnack,setSnackOpen,refreshAssets,selecte
                 <input type='checkbox' checked={useSelectedOnly} onChange={(e)=>setUseSelectedOnly(e.target.checked)}/>
                 Include selected assets only in CSV/PDF
               </label>
+
               <Button onClick={runDryRun} disabled={busy||!isAdmin}><RefreshCw size={14} className='mr-1'/>Dry Run</Button>
               <Button onClick={runMigrate} disabled={busy||!isAdmin}><Database size={14} className='mr-1'/>Migrate</Button>
+
               <div className='flex gap-2 mt-2'>
-                <Button variant='outline' onClick={()=>{
-                  const rows=conflicts;
-                  if(!rows.length){toast.error('No conflicts to export.');return;}
-                  const headers=['equipment_uid','asset_id','asset_code','equipment_name'];
-                  const csv=[headers.join(',')].concat(rows.map((c)=>headers.map((h)=>`${String(c[h]??'').replace(/"/g,'""')}`).join(','))).join('\n');
-                  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
-                  const a=document.createElement('a'); a.href=url; a.download=`conflicts_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.csv`; a.click(); URL.revokeObjectURL(url);
-                  toast.success(`Exported ${rows.length} conflict(s)`);
-                }} disabled={!conflicts.length}><FileDown size={14} className='mr-1'/>Export Conflicts</Button>
-                <Button variant='outline' onClick={()=>{
-                  const rows=conflicts;
-                  if(!rows.length&&(!logs||!logs.length)){toast.error('Nothing to include in report.');return;}
-                  const title=`${companyName} — CMMS Migration Report`;
-                  const w=window.open('','_blank','noopener,noreferrer');
-                  if(!w){alert('Popup blocked.');return;}
-                  const style=`
-                    <style>
-                      @media print {.no-print{display:none}}
-                      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;color:#222}
-                      .hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-                      .hdr img{height:40px}
-                      .title{font-size:20px;font-weight:600}
-                      .muted{color:#666;font-size:12px}
-                      h2{font-size:16px;margin:16px 0 8px}
-                      table{width:100%;border-collapse:collapse;font-size:12px}
-                      th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}
-                      th{background:#f5f5f5}
-                      .log{white-space:pre-wrap;background:#fafafa;border:1px solid #eee;padding:8px;border-radius:8px}
-                      .footer{margin-top:16px;font-size:12px;color:#666}
-                      .chip{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef;color:#334}
-                    </style>
-                  `;
-                  const conflictsTable=rows.length?`
-                    <h2>Conflicts (${rows.length})</h2>
-                    <table>
-                      <thead><tr><th>Equipment UID</th><th>Asset ID</th><th>Asset Code</th><th>Equipment Name</th></tr></thead>
-                      <tbody>${rows.map((c)=>`<tr><td>${c.equipment_uid||''}</td><td>${c.asset_id||''}</td><td>${c.asset_code||''}</td><td>${(c.equipment_name||'').toString().replace(/</g,'&lt;')}</td></tr>`).join('')}</tbody>
-                    </table>
-                  `:`<div class="muted">No conflicts detected.</div>`;
-                  const logsBlock=logs.length?`
-                    <h2>Log</h2>
-                    <div class="log">${logs.map((l)=>`• ${l}`).join('\n')}</div>
-                  `:`<div class="muted">No log entries.</div>`;
-                  const html=`
-                    <!doctype html><html><head><meta charset="utf-8"><title>${title}</title>${style}</head>
-                    <body>
-                      <div class="hdr">
-                        <img src="${logo}" alt="Logo"/>
-                        <div>
-                          <div class="title">${title}</div>
-                          <div class="muted">Generated: ${new Date().toLocaleString()} • User: ${userEmail||'-'}</div>
+                <Button
+                  variant='outline'
+                  onClick={()=>{
+                    const rows=conflicts;
+                    if(!rows.length){toast.error('No conflicts to export.');return;}
+                    const headers=['equipment_uid','asset_id','asset_code','equipment_name'];
+                    const csv=[headers.join(',')].concat(rows.map((c)=>headers.map((h)=>`${String(c[h]??'').replace(/"/g,'""')}`).join(','))).join('\n');
+                    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
+                    const a=document.createElement('a'); a.href=url; a.download=`conflicts_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.csv`; a.click(); URL.revokeObjectURL(url);
+                    toast.success(`Exported ${rows.length} conflict(s)`);
+                  }}
+                  disabled={!conflicts.length}
+                >
+                  <FileDown size={14} className='mr-1'/>Export Conflicts
+                </Button>
+
+                <Button
+                  variant='outline'
+                  onClick={()=>{
+                    const rows=conflicts;
+                    if(!rows.length&&(!logs||!logs.length)){toast.error('Nothing to include in report.');return;}
+                    const title=`${companyName} — CMMS Migration Report`;
+                    const w=window.open('','_blank','noopener,noreferrer');
+                    if(!w){alert('Popup blocked.');return;}
+                    const style=`
+                      <style>
+                        @media print {.no-print{display:none}}
+                        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;color:#222}
+                        .hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+                        .hdr img{height:40px}
+                        .title{font-size:20px;font-weight:600}
+                        .muted{color:#666;font-size:12px}
+                        h2{font-size:16px;margin:16px 0 8px}
+                        table{width:100%;border-collapse:collapse;font-size:12px}
+                        th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}
+                        th{background:#f5f5f5}
+                        .log{white-space:pre-wrap;background:#fafafa;border:1px solid #eee;padding:8px;border-radius:8px}
+                        .footer{margin-top:16px;font-size:12px;color:#666}
+                        .chip{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef;color:#334}
+                      </style>
+                    `;
+                    const conflictsTable=rows.length?`
+                      <h2>Conflicts (${rows.length})</h2>
+                      <table>
+                        <thead><tr><th>Equipment UID</th><th>Asset ID</th><th>Asset Code</th><th>Equipment Name</th></tr></thead>
+                        <tbody>${rows.map((c)=>`<tr><td>${c.equipment_uid||''}</td><td>${c.asset_id||''}</td><td>${c.asset_code||''}</td><td>${(c.equipment_name||'').toString().replace(/</g,'&lt;')}</td></tr>`).join('')}</tbody>
+                      </table>
+                    `:`<div class="muted">No conflicts detected.</div>`;
+                    const logsBlock=logs.length?`
+                      <h2>Log</h2>
+                      <div class="log">${logs.map((l)=>`• ${l}`).join('\n')}</div>
+                    `:`<div class="muted">No log entries.</div>`;
+                    const html=`
+                      <!doctype html><html><head><meta charset="utf-8"><title>${title}</title>${style}</head>
+                      <body>
+                        <div class="hdr">
+                          <img src="${logo}" alt="Logo"/>
+                          <div>
+                            <div class="title">${title}</div>
+                            <div class="muted">Generated: ${new Date().toLocaleString()} • User: ${userEmail||'-'}</div>
+                          </div>
+                          <div style="margin-left:auto" class="no-print">
+                            <button onclick="window.print()" style="padding:6px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">Print / Save PDF</button>
+                          </div>
                         </div>
-                        <div style="margin-left:auto" class="no-print">
-                          <button onclick="window.print()" style="padding:6px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">Print / Save PDF</button>
-                        </div>
-                      </div>
-                      ${conflictsTable}
-                      ${logsBlock}
-                      <div class="footer">Report summarizes migration readiness/activity for equipment_master → asset.</div>
-                    </body></html>
-                  `;
-                  w.document.open(); w.document.write(html); w.document.close();
-                  toast.success('Opened PDF preview');
-                }} disabled={!conflicts.length&&!logs.length}><Printer size={14} className='mr-1'/>Preview PDF</Button>
+                        ${conflictsTable}
+                        ${logsBlock}
+                        <div class="footer">Report summarizes migration readiness/activity for equipment_master → asset.</div>
+                      </body></html>
+                    `;
+                    w.document.open(); w.document.write(html); w.document.close();
+                    toast.success('Opened PDF preview');
+                  }}
+                  disabled={!conflicts.length&&!logs.length}
+                >
+                  <Printer size={14} className='mr-1'/>Preview PDF
+                </Button>
               </div>
+
               <div className='text-xs text-gray-500 mt-1'>Conflicts appear after a blocked Migrate (collisions).</div>
             </div>
 
@@ -555,7 +557,6 @@ const MigrationsPanel=({open,onClose,setSnack,setSnackOpen,refreshAssets,selecte
                 </tbody>
               </table>
             </div>
-
             <div className='text-xs text-gray-600 mt-3'>
               <div><b>Conflict guard:</b> migration is blocked if any <code>equipment_master.equipment_id</code> matches an <code>asset.asset_code</code> not mapped. Resolve those first.</div>
             </div>
@@ -663,10 +664,17 @@ const AssetManagement=()=>{
         supabase.from('department_master').select('id,department_id,department_name,subplant_uid').order('department_id',{ascending:true}),
         supabase.from('area_master').select('id,area_id,area_name,department_uid,subplant_uid,plant_uid').order('area_id',{ascending:true}),
       ]);
-      if(p.status==='fulfilled'&&!p.value.error) setPlants((p.value.data||[]).map(normPlant)); else{errs.push(`plant_master: ${p.value?.error?.message||p.reason?.message||'unavailable'}`); setPlants([]);}
-      if(sp.status==='fulfilled'&&!sp.value.error) setSubplants((sp.value.data||[]).map(normSubplant)); else{errs.push(`subplant_master: ${sp.value?.error?.message||p.reason?.message||'unavailable'}`); setSubplants([]);}
-      if(dp.status==='fulfilled'&&!dp.value.error) setDepartments((dp.value.data||[]).map(normDepartment)); else{errs.push(`department_master: ${dp.value?.error?.message||p.reason?.message||'unavailable'}`); setDepartments([]);}
-      if(ar.status==='fulfilled'&&!ar.value.error) setAreas((ar.value.data||[]).map(normArea)); else{errs.push(`area_master: ${ar.value?.error?.message||p.reason?.message||'unavailable'}`); setAreas([]);}
+      if(p.status==='fulfilled'&&!p.value.error) setPlants((p.value.data||[]).map(normPlant));
+      else{errs.push(`plant_master: ${p.value?.error?.message||p.reason?.message||'unavailable'}`); setPlants([]);}
+
+      if(sp.status==='fulfilled'&&!sp.value.error) setSubplants((sp.value.data||[]).map(normSubplant));
+      else{errs.push(`subplant_master: ${sp.value?.error?.message||sp.reason?.message||'unavailable'}`); setSubplants([]);}
+
+      if(dp.status==='fulfilled'&&!dp.value.error) setDepartments((dp.value.data||[]).map(normDepartment));
+      else{errs.push(`department_master: ${dp.value?.error?.message||dp.reason?.message||'unavailable'}`); setDepartments([]);}
+
+      if(ar.status==='fulfilled'&&!ar.value.error) setAreas((ar.value.data||[]).map(normArea));
+      else{errs.push(`area_master: ${ar.value?.error?.message||ar.reason?.message||'unavailable'}`); setAreas([]);}
     }catch(e){errs.push(e.message||String(e));}
     finally{setLookupErrors(errs);}
   };
@@ -680,21 +688,17 @@ const AssetManagement=()=>{
         .select('id,asset_code,name,status,barcode,rfid,public_token,qr_token,category_uid,equip_type,serial_no,manufacturer,model,install_date,calibration_done_on,calibration_due_on,created_at')
         .order('asset_code',{ascending:true})
         .limit(1000);
-
       if(error){throw error;}
-
       const cats=Array.isArray(freshCats)?freshCats:dbCategories;
       const localCatMap=new Map(
         (cats||[])
           .filter((c)=>!DISALLOWED_CATEGORY_NAMES.has(String(c.name||'').toLowerCase()))
           .map((c)=>[String(c.id),c.name])
       );
-
       const arr=(data||[]).map((r)=>({
         ...r,
         category_name:r.category_uid?(localCatMap.get(String(r.category_uid))||''):''
       }));
-
       setRows(arr);
       setAssetIds(new Set(arr.map((r)=>r.id)));
       setSelectedIds(new Set());
@@ -747,12 +751,10 @@ const AssetManagement=()=>{
   const ensureCategory=async(name)=>{
     const n=(name||'').trim();
     if(!n) return null;
-
     if(DISALLOWED_CATEGORY_NAMES.has(n.toLowerCase())){
       toast.error('Category cannot be "Portable" or "Immovable" — use the Type field instead.');
       return null;
     }
-
     const hit=dbCategories.find((c)=>(c.name||'').toLowerCase()===n.toLowerCase());
     if(hit) return hit.id;
 
@@ -761,7 +763,6 @@ const AssetManagement=()=>{
       setDbCategories((prev)=>prev.some((p)=>p.id===found.id)?prev:[...prev,found]);
       return found.id;
     }
-
     const ins=await supabase.from('asset_category').insert([{name:n}]).select('id,name').single();
     if(ins.error) throw ins.error;
     setDbCategories((prev)=>[...prev,ins.data]);
@@ -775,7 +776,6 @@ const AssetManagement=()=>{
 
     await toast.promise((async()=>{
       const category_uid=await ensureCategory(src.category_name);
-
       const plant_uid=selPlantId||null;
       const subplant_uid=selSubplantId||null;
       const department_uid=selDepartmentId||null;
@@ -801,7 +801,6 @@ const AssetManagement=()=>{
       };
 
       let assetId=src.id&&assetIds.has(src.id)?src.id:null;
-
       if(assetId){
         const {error}=await supabase.from('asset').update(payload).eq('id',assetId);
         if(error){throw error;}
@@ -885,7 +884,6 @@ const AssetManagement=()=>{
       const obj={}; headers.forEach((h,i)=>{obj[h]=parts[i]?parts[i].trim():'';});
       parsed.push(obj);
     }
-
     await toast.promise((async()=>{
       for(const r of parsed){
         if(r.category_name&&DISALLOWED_CATEGORY_NAMES.has(String(r.category_name).toLowerCase())){
@@ -906,10 +904,8 @@ const AssetManagement=()=>{
 
   const onEditClick=async(r)=>{
     if(!isAssetRow(r)){await migrateFromLegacy(r);return;}
-
     const catNameRaw=r.category_name||(r.category_uid?(categoryMap.get(String(r.category_uid))||''):'');
     const catName=DISALLOWED_CATEGORY_NAMES.has(String(catNameRaw).toLowerCase())?'':(catNameRaw||'');
-
     setForm({
       id:r.id,asset_code:r.asset_code||'',name:r.name||'',
       category_name:catName,
@@ -919,12 +915,10 @@ const AssetManagement=()=>{
       plant_code:r.plant_code||'',subplant_code:r.subplant_code||'',department_code:r.department_code||'',area_code:r.area_code||'',
       barcode:r.barcode||'',rfid:r.rfid||'',gmp_critical:!!r.gmp_critical,warranty_expiry:r.warranty_expiry||'',status:r.status||'Active'
     });
-
     setSelPlantId(r.plant_uid?String(r.plant_uid):'');
     setSelSubplantId(r.subplant_uid?String(r.subplant_uid):'');
     setSelDepartmentId(r.department_uid?String(r.department_uid):'');
     setSelAreaId(r.area_uid?String(r.area_uid):'');
-
     toast.success(`✏️ Editing ${r.asset_code}`);
     setEditing(true);
   };
@@ -953,18 +947,10 @@ const AssetManagement=()=>{
   },[areas,selDepartmentId,selSubplantId,selPlantId]);
 
   /* change handlers for location dropdowns */
-  const onPlantChange=(plantId)=>{
-    setSelPlantId(plantId||''); setSelSubplantId(''); setSelDepartmentId(''); setSelAreaId('');
-  };
-  const onSubplantChange=(subplantId)=>{
-    setSelSubplantId(subplantId||''); setSelDepartmentId(''); setSelAreaId('');
-  };
-  const onDeptChange=(deptId)=>{
-    setSelDepartmentId(deptId||''); setSelAreaId('');
-  };
-  const onAreaChange=(areaId)=>{
-    setSelAreaId(areaId||'');
-  };
+  const onPlantChange=(plantId)=>{setSelPlantId(plantId||''); setSelSubplantId(''); setSelDepartmentId(''); setSelAreaId('');};
+  const onSubplantChange=(subplantId)=>{setSelSubplantId(subplantId||''); setSelDepartmentId(''); setSelAreaId('');};
+  const onDeptChange=(deptId)=>{setSelDepartmentId(deptId||''); setSelAreaId('');};
+  const onAreaChange=(areaId)=>{setSelAreaId(areaId||'');};
 
   const getCalibDone=(r)=>r.calibration_done_on||null;
   const getCalibDue=(r)=>r.calibration_due_on||null;
@@ -973,6 +959,7 @@ const AssetManagement=()=>{
   return (
     <div className='p-4'>
       <Toaster position="top-right"/>
+
       <div className='flex items-center justify-between mb-3'>
         <h1 className='text-xl font-semibold flex items-center gap-2 text-blue-700'><Package size={18}/> Asset Management</h1>
         <div className='flex items-center gap-2'>
@@ -994,6 +981,7 @@ const AssetManagement=()=>{
             <Upload size={16}/> Import CSV
             <input ref={fileRef} type='file' accept='.csv' className='hidden' onChange={onImport}/>
           </label>
+
           <Button variant='outline' onClick={downloadAssetTemplate}><Download size={16} className='mr-1'/>Asset CSV</Button>
 
           <label className='inline-flex items-center gap-2 text-sm px-2 py-1 border rounded cursor-pointer' title='Use QR codes on labels'>
@@ -1004,6 +992,7 @@ const AssetManagement=()=>{
           <Button variant='outline' onClick={()=>{printAssetLabels(filtered,{useQR:qrMode}); toast.success('Opened print preview');}}>
             <Printer size={16} className='mr-1'/>Print Labels
           </Button>
+
           <Button onClick={()=>{setShowMigrations(true);}}><Database size={16} className='mr-1'/>Migrations</Button>
           <Button onClick={()=>{resetForm(); setEditing(true);}}><Plus size={16} className='mr-1'/>New</Button>
         </div>
@@ -1041,6 +1030,7 @@ const AssetManagement=()=>{
               <th className='p-2 text-left'>Actions</th>
             </tr>
           </thead>
+
           <tbody>
             {loading?(
               Array.from({length:6}).map((_,i)=>(
@@ -1274,6 +1264,7 @@ const AssetManagement=()=>{
       )}
 
       <ESignModal open={!!showSign} onClose={()=>setShowSign(false)} recordTable='asset' recordId={showSign||''} action='Retire Asset' onSigned={()=>retireAsset(showSign)}/>
+
       <MigrationsPanel
         open={showMigrations}
         onClose={()=>setShowMigrations(false)}
@@ -1282,6 +1273,7 @@ const AssetManagement=()=>{
         refreshAssets={refreshAssets}
         selectedAssetCodes={new Set()}
       />
+
       <Snackbar open={snackOpen} message={snack} onClose={()=>setSnackOpen(false)}/>
     </div>
   );

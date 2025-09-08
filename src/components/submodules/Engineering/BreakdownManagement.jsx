@@ -6,21 +6,19 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../../utils/supabaseClient';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
-
 import {
   Wrench, Factory, Building2, Spline, LayoutGrid, Cog, ShieldAlert, Flag,
   Paperclip, RefreshCw, Search, Plus, Save, CheckCircle2, XCircle, Play,
   StopCircle, Layers, Printer, FileDown, Clock4, TrendingUp, BarChart3, PieChart,
   FileText, Inbox
 } from 'lucide-react';
-
-import { Button } from '../../ui/button';
+import Button from '../../ui/button';  // Default import
 import { Card } from '../../ui/card';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line
 } from 'recharts';
-
 import logo from '../../../assets/logo.png';
+
 /* ===== Pretty chart helpers (drop near top) ===== */
 const ChartCard = ({ title, subtitle, height=260, children }) => (
   <Card className="p-4">
@@ -97,7 +95,6 @@ const csv = (rows) => rows.map((r) => Object.values(r).map((v) => '"' + String(v
 /* ==================================================== */
 /* =============== Helper UI Components =============== */
 /* ==================================================== */
-
 const iconTheme = {
   plant:    { Icon: Factory,     className: 'text-sky-600' },
   subplant: { Icon: Building2,   className: 'text-indigo-600' },
@@ -150,7 +147,6 @@ function SkeletonBlock({ rows=6 }) {
 /* ==================================================== */
 /* =================== Main Component ================= */
 /* ==================================================== */
-
 export default function BreakdownManagement() {
   const { user } = useAuth();
 
@@ -222,7 +218,6 @@ export default function BreakdownManagement() {
   };
   const onPickFiles = ()=> fileRef.current?.click();
   const onFiles = (e)=> setForm((x)=>({ ...x, attachments:[...e.target.files] }));
-
   const openTicket = (t)=>{ setActive(t); setTab('Queue'); };
 
   /* --------------- Create Ticket --------------- */
@@ -243,7 +238,6 @@ export default function BreakdownManagement() {
         description:form.description, immediate_action:form.immediate_action||null,
         reported_by:user.id, status:'Open', sla_due_at:computeSLA(form.severity)
       };
-
       const { data:ins, error:insErr } = await supabase
         .from('breakdown_ticket').insert(insert).select('*').single();
       if (insErr) throw insErr;
@@ -292,6 +286,7 @@ export default function BreakdownManagement() {
     fishbone_material:'',fishbone_measurement:'',fishbone_environment:'',
     root_cause:''
   });
+
   const [capa,setCapa] = useState({ action_type:'Preventive', action_title:'', action_detail:'', owner_email:'', due_date:'' });
 
   const addRCA = async (ticket_id,payload)=>{
@@ -419,7 +414,6 @@ export default function BreakdownManagement() {
   /* --------------- Report --------------- */
   const printTicketReport = async (t)=>{
     if(!t) return;
-
     const [rcaRes,capaRes,spRes,attRes]=await Promise.all([
       supabase.from('breakdown_rca').select('*').eq('ticket_id',t.id).order('created_at',{ascending:false}),
       supabase.from('breakdown_capa').select('*').eq('ticket_id',t.id).order('created_at',{ascending:true}),
@@ -434,15 +428,11 @@ export default function BreakdownManagement() {
     const eq = equipBy[t.equipment_uid];
     const area = areaBy[t.area_uid];
     const dept = deptBy[t.department_uid];
+    thead
     const sp = subplantBy[t.subplant_uid];
     const plant = plantBy[t.plant_uid];
 
-    const html = `
-<!doctype html><html>
-<head>
-<meta charset="utf-8" />
-<title>${t.ticket_no} — Breakdown Report</title>
-<style>
+    const html = `<!doctype html><html><head><meta charset="utf-8" /><title>${t.ticket_no} — Breakdown Report</title><style>
   :root{
     --fg:#0f172a; --muted:#64748b; --bd:#e2e8f0; --chip:#eef2ff; --brand:#2563eb;
   }
@@ -457,10 +447,7 @@ export default function BreakdownManagement() {
   .muted{color:var(--muted);font-size:12px}
   .chip{background:var(--chip);display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;margin-left:6px}
   .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-  img.logo{height:28px}
-</style>
-</head>
-<body>
+  img.logo{height:28px}</style></head><body>
   <div class="head">
     <div class="row">
       <img src="${logo}" class="logo" />
@@ -527,8 +514,7 @@ export default function BreakdownManagement() {
     ${atts.map(a=>`<li>${a.file_path}</li>`).join('') || '<li>No attachments</li>'}
   </ul>
 
-  <script>window.print()</script>
-</body></html>`;
+  <script>window.print()</script></body></html>`;
     const w=window.open('','_blank'); if(!w){toast.error('Popup blocked'); return;}
     w.document.write(html); w.document.close();
   };
@@ -574,6 +560,7 @@ export default function BreakdownManagement() {
     const arr=filteredTickets.map(t=>diffHrs(t.work_started_at,t.restored_at)).filter(x=>x!=null);
     if(!arr.length) return 0; return (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2);
   },[filteredTickets]);
+
   const mtbfAvg = useMemo(()=>{
     const byEq={}; filteredTickets.filter(t=>t.restored_at).forEach(t=>{
       byEq[t.equipment_uid]=byEq[t.equipment_uid]||[]; byEq[t.equipment_uid].push(new Date(t.restored_at).getTime());
@@ -581,13 +568,13 @@ export default function BreakdownManagement() {
     let gaps=[]; Object.values(byEq).forEach(arr=>{arr.sort((a,b)=>a-b); for(let i=1;i<arr.length;i++) gaps.push((arr[i]-arr[i-1])/36e5);});
     if(!gaps.length) return 0; return (gaps.reduce((a,b)=>a+b,0)/gaps.length).toFixed(2);
   },[filteredTickets]);
+
   const criticalOpen = filteredTickets.filter(t=>t.severity==='Critical'&&t.status!=='Closed').length;
   const dueSoon = filteredTickets.filter(t=>t.sla_due_at && new Date(t.sla_due_at)-Date.now()<2*3600*1000 && t.status!=='Closed').length;
 
   /* ==================================================== */
   /* ====================== UI ========================== */
   /* ==================================================== */
-
   return (
     <div className="p-4 space-y-4">
       {/* Header */}
@@ -675,11 +662,13 @@ export default function BreakdownManagement() {
                       {['Critical','Major','Minor'].map((s)=><option key={s} value={s}>{s}</option>)}
                     </select>
                   </IconField>
+
                   <IconField icon="priority" label="Priority">
                     <select value={form.priority} onChange={(e)=>setForm((x)=>({ ...x, priority:e.target.value }))}>
                       {['P1','P2','P3'].map((s)=><option key={s} value={s}>{s}</option>)}
                     </select>
                   </IconField>
+
                   <div className="flex items-end">
                     <div className="text-xs text-slate-500">
                       SLA due in <b>{SLA_HOURS_BY_SEVERITY[form.severity]||24}h</b>
@@ -741,7 +730,6 @@ export default function BreakdownManagement() {
                 <BarChart3 className="text-amber-600"/>
               </Card>
             </div>
-
             <div className="text-xs text-slate-500">Tip: Critical & P1 create a 2h SLA by default.</div>
           </Card>
         </div>
@@ -795,6 +783,7 @@ export default function BreakdownManagement() {
                       className="gap-1"><Printer size={16}/>Report</Button>
                   </div>
                 </div>
+
                 <div className="text-sm">{active.description}</div>
                 <div className="text-xs text-slate-500">Created: {fmt(active.created_at)}</div>
 
@@ -867,6 +856,7 @@ export default function BreakdownManagement() {
                       <textarea className="border rounded p-2 md:col-span-2" rows={2} placeholder="Action Detail" value={capa.action_detail} onChange={(e)=>setCapa((x)=>({ ...x, action_detail:e.target.value }))}/>
                     </div>
                     <div className="flex gap-2"><Button onClick={()=>addCAPA(active.id,capa)} className="gap-1"><Save size={16}/>Add CAPA</Button></div>
+
                     <TicketCAPA ticketId={active.id}/>
                   </div>
                 )}
@@ -878,118 +868,118 @@ export default function BreakdownManagement() {
 
       {/* Analytics (full page) */}
       {tab==='Analytics' && (
-  <div className="space-y-4">
-    {/* KPI tiles */}
-    <div className="grid md:grid-cols-4 gap-3">
-      <ValueTile label="MTTR" value={`${mttrAvg} h`} Icon={()=><Clock4 className="text-emerald-600" />} />
-      <ValueTile label="MTBF" value={`${mtbfAvg} h`} Icon={()=><TrendingUp className="text-indigo-600" />} />
-      <ValueTile label="Critical Open" value={criticalOpen} Icon={()=><ShieldAlert className="text-rose-600" />} />
-      <ValueTile label="SLA < 2h" value={dueSoon} Icon={()=><PieChart className="text-amber-600" />} />
-    </div>
+        <div className="space-y-4">
+          {/* KPI tiles */}
+          <div className="grid md:grid-cols-4 gap-3">
+            <ValueTile label="MTTR" value={`${mttrAvg} h`} Icon={()=><Clock4 className="text-emerald-600" />} />
+            <ValueTile label="MTBF" value={`${mtbfAvg} h`} Icon={()=><TrendingUp className="text-indigo-600" />} />
+            <ValueTile label="Critical Open" value={criticalOpen} Icon={()=><ShieldAlert className="text-rose-600" />} />
+            <ValueTile label="SLA < 2h" value={dueSoon} Icon={()=><PieChart className="text-amber-600" />} />
+          </div>
 
-    {/* MTTR by Department */}
-    <ChartCard title="MTTR by Department" subtitle="Average repair hours (last 500 tickets)">
-      <ResponsiveContainer>
-        <BarChart data={mttrByDept} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-          <ChartDefs />
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" interval={0} angle={-15} textAnchor="end" height={50}/>
-          <YAxis />
-          <Tooltip content={<TooltipBox/>} />
-          <Bar dataKey="value" name="Hours" fill="url(#gPrimary)" radius={[6,6,0,0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartCard>
+          {/* MTTR by Department */}
+          <ChartCard title="MTTR by Department" subtitle="Average repair hours (last 500 tickets)">
+            <ResponsiveContainer>
+              <BarChart data={mttrByDept} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                <ChartDefs />
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" interval={0} angle={-15} textAnchor="end" height={50}/>
+                <YAxis />
+                <Tooltip content={<TooltipBox/>} />
+                <Bar dataKey="value" name="Hours" fill="url(#gPrimary)" radius={[6,6,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
 
-    {/* MTTR by Area */}
-    <ChartCard title="MTTR by Area" subtitle="Average repair hours">
-      <ResponsiveContainer>
-        <BarChart data={mttrByArea} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-          <ChartDefs />
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" interval={0} angle={-15} textAnchor="end" height={50}/>
-          <YAxis />
-          <Tooltip content={<TooltipBox/>} />
-          <Bar dataKey="value" name="Hours" fill="url(#gEmerald)" radius={[6,6,0,0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartCard>
+          {/* MTTR by Area */}
+          <ChartCard title="MTTR by Area" subtitle="Average repair hours">
+            <ResponsiveContainer>
+              <BarChart data={mttrByArea} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                <ChartDefs />
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" interval={0} angle={-15} textAnchor="end" height={50}/>
+                <YAxis />
+                <Tooltip content={<TooltipBox/>} />
+                <Bar dataKey="value" name="Hours" fill="url(#gEmerald)" radius={[6,6,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
 
-    {/* Top 5 recurring equipment */}
-    <ChartCard title="Top 5 Recurring Equipment" subtitle="Tickets in the last 90 days">
-      <ResponsiveContainer>
-        <BarChart data={topEquip90} layout="vertical" margin={{ top: 8, right: 16, left: 80, bottom: 8 }}>
-          <ChartDefs />
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" allowDecimals={false} />
-          <YAxis type="category" dataKey="name" width={280}/>
-          <Tooltip content={<TooltipBox/>} />
-          <Bar dataKey="value" name="Tickets" fill="url(#gIndigo)" radius={[6,6,6,6]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartCard>
+          {/* Top 5 recurring equipment */}
+          <ChartCard title="Top 5 Recurring Equipment" subtitle="Tickets in the last 90 days">
+            <ResponsiveContainer>
+              <BarChart data={topEquip90} layout="vertical" margin={{ top: 8, right: 16, left: 80, bottom: 8 }}>
+                <ChartDefs />
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" allowDecimals={false} />
+                <YAxis type="category" dataKey="name" width={280}/>
+                <Tooltip content={<TooltipBox/>} />
+                <Bar dataKey="value" name="Tickets" fill="url(#gIndigo)" radius={[6,6,6,6]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
 
-    {/* Ageing + SLA */}
-    <div className="grid md:grid-cols-2 gap-3">
-      <ChartCard title="Ageing (Open Tickets)" subtitle="How long tickets have been open" height={220}>
-        <ResponsiveContainer>
-          <BarChart
-            data={[
-              {bucket:'0–2h', value:ageingBuckets.b0_2},
-              {bucket:'2–8h', value:ageingBuckets.b2_8},
-              {bucket:'8–24h', value:ageingBuckets.b8_24},
-              {bucket:'>24h', value:ageingBuckets.b24p},
-            ]}
-            margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
-          >
-            <ChartDefs />
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="bucket" />
-            <YAxis allowDecimals={false}/>
-            <Tooltip content={<TooltipBox/>} />
-            <Bar dataKey="value" name="Open" fill="url(#gAmber)" radius={[6,6,0,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
+          {/* Ageing + SLA */}
+          <div className="grid md:grid-cols-2 gap-3">
+            <ChartCard title="Ageing (Open Tickets)" subtitle="How long tickets have been open" height={220}>
+              <ResponsiveContainer>
+                <BarChart
+                  data={[
+                    {bucket:'0–2h', value:ageingBuckets.b0_2},
+                    {bucket:'2–8h', value:ageingBuckets.b2_8},
+                    {bucket:'8–24h', value:ageingBuckets.b8_24},
+                    {bucket:'>24h', value:ageingBuckets.b24p},
+                  ]}
+                  margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
+                >
+                  <ChartDefs />
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="bucket" />
+                  <YAxis allowDecimals={false}/>
+                  <Tooltip content={<TooltipBox/>} />
+                  <Bar dataKey="value" name="Open" fill="url(#gAmber)" radius={[6,6,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
 
-      <Card className="p-4 flex items-center justify-between">
-        <div>
-          <div className="text-sm font-semibold">SLA Compliance</div>
-          <div className="text-xs text-slate-500">{slaCompliance.ontime}/{slaCompliance.total} closed on time</div>
+            <Card className="p-4 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold">SLA Compliance</div>
+                <div className="text-xs text-slate-500">{slaCompliance.ontime}/{slaCompliance.total} closed on time</div>
+              </div>
+              <div className="text-5xl font-extrabold text-indigo-600">{slaCompliance.pct}%</div>
+            </Card>
+          </div>
+
+          {/* Weekly trend */}
+          <ChartCard title="Tickets per Week" subtitle="Grouped by ISO week">
+            <ResponsiveContainer>
+              <LineChart data={weeklyTrend} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                <ChartDefs />
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="week_start" />
+                <YAxis allowDecimals={false} />
+                <Tooltip content={<TooltipBox/>} />
+                <Line type="monotone" dataKey="tickets" name="Tickets" stroke="#2563eb" strokeWidth={3} dot={{ r: 2 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          {/* Export */}
+          <Card className="p-3">
+            <div className="text-sm font-semibold mb-2">Tickets (export)</div>
+            <Button variant="outline" onClick={()=>{
+              if(!filteredTickets.length){toast.error('No rows');return;}
+              const rows=filteredTickets.map((t)=>({ticket_no:t.ticket_no,severity:t.severity,priority:t.priority,status:t.status,created_at:t.created_at,restored_at:t.restored_at,mttr_h:diffHrs(t.work_started_at,t.restored_at)||''}));
+              const hdr=Object.keys(rows[0]||{}).join(','); 
+              const body=rows.map(r=>Object.values(r).map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
+              const blob=new Blob([hdr+'\n'+body],{type:'text/csv'});
+              const url=URL.createObjectURL(blob);
+              const a=document.createElement('a'); a.href=url; a.download='breakdowns.csv'; a.click(); URL.revokeObjectURL(url);
+            }} className="gap-1"><FileDown size={16}/>CSV</Button>
+          </Card>
         </div>
-        <div className="text-5xl font-extrabold text-indigo-600">{slaCompliance.pct}%</div>
-      </Card>
-    </div>
-
-    {/* Weekly trend */}
-    <ChartCard title="Tickets per Week" subtitle="Grouped by ISO week">
-      <ResponsiveContainer>
-        <LineChart data={weeklyTrend} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-          <ChartDefs />
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="week_start" />
-          <YAxis allowDecimals={false} />
-          <Tooltip content={<TooltipBox/>} />
-          <Line type="monotone" dataKey="tickets" name="Tickets" stroke="#2563eb" strokeWidth={3} dot={{ r: 2 }} />
-        </LineChart>
-      </ResponsiveContainer>
-    </ChartCard>
-
-    {/* Export */}
-    <Card className="p-3">
-      <div className="text-sm font-semibold mb-2">Tickets (export)</div>
-      <Button variant="outline" onClick={()=>{
-        if(!filteredTickets.length){toast.error('No rows');return;}
-        const rows=filteredTickets.map((t)=>({ticket_no:t.ticket_no,severity:t.severity,priority:t.priority,status:t.status,created_at:t.created_at,restored_at:t.restored_at,mttr_h:diffHrs(t.work_started_at,t.restored_at)||''}));
-        const hdr=Object.keys(rows[0]||{}).join(','); 
-        const body=rows.map(r=>Object.values(r).map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
-        const blob=new Blob([hdr+'\n'+body],{type:'text/csv'});
-        const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='breakdowns.csv'; a.click(); URL.revokeObjectURL(url);
-      }} className="gap-1"><FileDown size={16}/>CSV</Button>
-    </Card>
-  </div>
-)}
-
+      )}
 
       {/* SOP */}
       {tab==='SOP' && (
@@ -1017,7 +1007,6 @@ export default function BreakdownManagement() {
 /* ==================================================== */
 /* ================= Attachments List ================= */
 /* ==================================================== */
-
 function TicketAttachments({ ticketId }) {
   const [rows,setRows]=useState([]);
   useEffect(()=>{(async()=>{
@@ -1032,6 +1021,7 @@ function TicketAttachments({ ticketId }) {
     </div>
   );
 }
+
 function AttachmentRow({ row, urlFor }) {
   const [url,setUrl]=useState('');
   useEffect(()=>{(async()=>{setUrl(await urlFor(row.file_path));})();},[row.file_path]);
@@ -1046,7 +1036,6 @@ function AttachmentRow({ row, urlFor }) {
 /* ==================================================== */
 /* ================ Spares Selector/List ============== */
 /* ==================================================== */
-
 function SparesSelector({ ticketId, onAdded, currentUserId }) {
   const [q,setQ]=useState('');
   const [qty,setQty]=useState(1);
@@ -1076,7 +1065,6 @@ function SparesSelector({ ticketId, onAdded, currentUserId }) {
     if(!selected?.id){ toast.error('Pick a spare from the list'); return; }
     const qtyNum=Number.isFinite(Number(qty))&&Number(qty)>0?Number(qty):1;
     const payload={ticket_id:ticketId,part_uid:selected.id,qty_used:qtyNum,added_by:currentUserId||null};
-
     const run = async ()=>{
       const { error } = await supabase.from('breakdown_spares_used').insert(payload);
       if (error) throw error;
@@ -1145,6 +1133,7 @@ function TicketSpares({ ticketId, refreshKey }) {
       .order('created_at',{ascending:false});
     if(!error){ setRows(data||[]); }
   })();},[ticketId,refreshKey]);
+
   return (
     <div className="border rounded">
       {rows.map((r)=>(
@@ -1161,13 +1150,13 @@ function TicketSpares({ ticketId, refreshKey }) {
 /* ==================================================== */
 /* ===================== CAPA List ==================== */
 /* ==================================================== */
-
 function TicketCAPA({ ticketId }) {
   const [rows,setRows]=useState([]);
   useEffect(()=>{(async()=>{
     const {data}=await supabase.from('breakdown_capa').select('*').eq('ticket_id',ticketId).order('created_at',{ascending:false});
     setRows(data||[]);
   })();},[ticketId]);
+
   return (
     <div className="border rounded">
       {rows.map((r)=>(

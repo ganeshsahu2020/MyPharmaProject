@@ -12,7 +12,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../../utils/supabaseClient';
-import { Button } from '../../ui/button';
+import Button from '../../ui/button';  // Default import
 import {
   ClipboardList,
   Plus,
@@ -79,9 +79,7 @@ const ESignModal = ({ open, onClose, recordTable, recordId, action, onSigned }) 
         signer_name: name,
         reason,
       };
-      const hash = btoa(
-        `${recordTable}|${recordId}|${action}|${uid}|${new Date().toISOString()}|${reason}`,
-      );
+      const hash = btoa(`${recordTable}|${recordId}|${action}|${uid}|${new Date().toISOString()}|${reason}`);
 
       const { error } = await supabase.from('electronic_signature').insert([{ ...payload, hash }]);
       if (error) throw error;
@@ -112,9 +110,12 @@ const ESignModal = ({ open, onClose, recordTable, recordId, action, onSigned }) 
           onChange={(e) => setReason(e.target.value)}
         />
         <div className="mt-3 flex gap-2 justify-end">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
           <Button onClick={sign} disabled={busy}>
-            <CheckCircle size={16} className="mr-1" />Sign
+            <CheckCircle size={16} className="mr-1" />
+            Sign
           </Button>
         </div>
       </div>
@@ -167,13 +168,12 @@ const WorkOrdersManagement = () => {
     }
     // de-duplicate by department_uid and sort
     const uniq = uniqBy(data || [], (d) => d?.department_uid).sort((a, b) =>
-      (a?.department_name || '').localeCompare(b?.department_name || '')
+      (a?.department_name || '').localeCompare(b?.department_name || ''),
     );
     setDepartments(uniq);
-
     // pick Engineering if exists; else first; else empty
     const eng = uniq.find((d) => (d?.department_name || '').toLowerCase() === 'engineering');
-    setSelectedDeptUid(eng ? eng.department_uid : (uniq[0]?.department_uid || ''));
+    setSelectedDeptUid(eng ? eng.department_uid : uniq[0]?.department_uid || '');
   }
 
   /* ---------- RPC: Users for Department (Engineering) ---------- */
@@ -191,8 +191,9 @@ const WorkOrdersManagement = () => {
       return;
     }
     // de-duplicate by auth_uid just in case the view joins produce dup rows
-    const uniq = uniqBy((data || []).filter((u) => u?.auth_uid), (u) => u.auth_uid)
-      .sort((a, b) => (a?.full_name || a?.email || '').localeCompare(b?.full_name || b?.email || ''));
+    const uniq = uniqBy((data || []).filter((u) => u?.auth_uid), (u) => u.auth_uid).sort((a, b) =>
+      (a?.full_name || a?.email || '').localeCompare(b?.full_name || b?.email || ''),
+    );
     setUsers(uniq);
   }
 
@@ -219,20 +220,20 @@ const WorkOrdersManagement = () => {
 
   /* ---------- Fetch list (prefers vw_wo_list) ---------- */
   const fetchAll = async () => {
-    let data = null, error = null;
+    let data = null,
+      error = null;
 
-    ({ data, error } = await supabase
-      .from('vw_wo_list')
-      .select('*')
-      .order('created_at', { ascending: false }));
+    ({ data, error } = await supabase.from('vw_wo_list').select('*').order('created_at', { ascending: false }));
 
     if (error || !data) {
       ({ data, error } = await supabase
         .from('work_order')
-        .select(`
+        .select(
+          `
           id, wo_code, status, priority, type, title, description, created_at, due_date, sop_url, assigned_to, asset_uid,
           asset:asset(id, asset_code, name)
-        `)
+        `,
+        )
         .order('created_at', { ascending: false }));
     }
 
@@ -276,9 +277,7 @@ const WorkOrdersManagement = () => {
   useEffect(() => {
     const ch = supabase
       .channel('rt_wo')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_order' }, () =>
-        fetchAll(),
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_order' }, () => fetchAll())
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
@@ -371,18 +370,10 @@ const WorkOrdersManagement = () => {
       if (!partsForm.wo_uid) throw new Error('Open a WO first');
       if (!partsForm.part_code) throw new Error('Part code required');
 
-      const wo = await supabase
-        .from('work_order')
-        .select('id,asset_uid')
-        .eq('id', partsForm.wo_uid)
-        .maybeSingle();
+      const wo = await supabase.from('work_order').select('id,asset_uid').eq('id', partsForm.wo_uid).maybeSingle();
       if (wo.error || !wo.data) throw new Error('WO not found');
 
-      const asset = await supabase
-        .from('asset')
-        .select('id,plant_uid')
-        .eq('id', wo.data.asset_uid)
-        .maybeSingle();
+      const asset = await supabase.from('asset').select('id,plant_uid').eq('id', wo.data.asset_uid).maybeSingle();
       if (asset.error || !asset.data) throw new Error('Asset not found');
 
       const part = await supabase
@@ -406,9 +397,7 @@ const WorkOrdersManagement = () => {
       if (qty <= 0) throw new Error('Qty must be > 0');
       if (pl.data.qty_on_hand < qty) throw new Error('Insufficient stock');
 
-      const ins1 = await supabase
-        .from('wo_part_usage')
-        .insert([{ wo_uid: wo.data.id, part_location_uid: pl.data.id, qty }]);
+      const ins1 = await supabase.from('wo_part_usage').insert([{ wo_uid: wo.data.id, part_location_uid: pl.data.id, qty }]);
       if (ins1.error) throw ins1.error;
 
       const upd = await supabase.rpc('decrement_part_stock', {
@@ -508,7 +497,8 @@ const WorkOrdersManagement = () => {
               setEditing(true);
             }}
           >
-            <Plus size={16} className="mr-1" />New WO
+            <Plus size={16} className="mr-1" />
+            New WO
           </Button>
         </div>
       </div>
@@ -559,9 +549,7 @@ const WorkOrdersManagement = () => {
                       {r.status}
                     </span>
                   </td>
-                  <td className="p-2 text-xs">
-                    {r.assigned_to ? userBook[r.assigned_to] || r.assigned_to : '—'}
-                  </td>
+                  <td className="p-2 text-xs">{r.assigned_to ? userBook[r.assigned_to] || r.assigned_to : '—'}</td>
                   <td className="p-2">
                     {r.wo_code ? (
                       <div className="flex items-center gap-2">
@@ -570,8 +558,9 @@ const WorkOrdersManagement = () => {
                           alt="QR"
                           style={{ width: 38, height: 38 }}
                           onError={(e) => {
-                            e.currentTarget.src =
-                              `https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=${encodeURIComponent(r.wo_code)}`;
+                            e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=${encodeURIComponent(
+                              r.wo_code,
+                            )}`;
                           }}
                         />
                         <span className="text-[10px] font-mono">{String(r.wo_code).slice(0, 8)}…</span>
@@ -616,7 +605,9 @@ const WorkOrdersManagement = () => {
               ))}
               {!filtered.length && (
                 <tr>
-                  <td className="p-2 text-gray-500" colSpan={8}>No work orders.</td>
+                  <td className="p-2 text-gray-500" colSpan={8}>
+                    No work orders.
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -643,52 +634,43 @@ const WorkOrdersManagement = () => {
                     <Hash size={16} />
                   </Button>
                 </div>
-
                 <input
                   className="border p-2 rounded"
                   placeholder="Asset Code (e.g., AHU-01) — resolves to asset"
                   value={form.asset_code}
                   onChange={(e) => setForm({ ...form, asset_code: e.target.value })}
                 />
-
-                <select
-                  className="border p-2 rounded"
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value })}
-                >
-                  {TYPE_OPTIONS.map((t) => <option key={t}>{t}</option>)}
+                <select className="border p-2 rounded" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                  {TYPE_OPTIONS.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
                 </select>
-
                 <select
                   className="border p-2 rounded"
                   value={form.priority}
                   onChange={(e) => setForm({ ...form, priority: e.target.value })}
                 >
-                  {PRIORITY_OPTIONS.map((p) => <option key={p}>{p}</option>)}
+                  {PRIORITY_OPTIONS.map((p) => (
+                    <option key={p}>{p}</option>
+                  ))}
                 </select>
-
-                <select
-                  className="border p-2 rounded"
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                >
-                  {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                <select className="border p-2 rounded" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
                 </select>
-
                 <input
                   className="border p-2 rounded"
                   type="date"
                   value={form.due_date}
                   onChange={(e) => setForm({ ...form, due_date: e.target.value })}
                 />
-
                 <input
                   className="border p-2 rounded col-span-2"
                   placeholder="Title (human-readable summary)"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                 />
-
                 <textarea
                   className="border p-2 rounded col-span-2"
                   rows={3}
@@ -696,7 +678,6 @@ const WorkOrdersManagement = () => {
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                 />
-
                 <input
                   className="border p-2 rounded"
                   placeholder="SOP URL (optional)"
@@ -770,7 +751,8 @@ const WorkOrdersManagement = () => {
                   Cancel
                 </Button>
                 <Button onClick={saveWO}>
-                  <Save size={16} className="mr-1" />Save
+                  <Save size={16} className="mr-1" />
+                  Save
                 </Button>
               </div>
 
@@ -783,9 +765,7 @@ const WorkOrdersManagement = () => {
                       className="border p-2 rounded col-span-2"
                       placeholder="Part Code"
                       value={partsForm.part_code}
-                      onChange={(e) =>
-                        setPartsForm({ ...partsForm, wo_uid: form.id, part_code: e.target.value })
-                      }
+                      onChange={(e) => setPartsForm({ ...partsForm, wo_uid: form.id, part_code: e.target.value })}
                     />
                     <input
                       className="border p-2 rounded"
@@ -803,7 +783,8 @@ const WorkOrdersManagement = () => {
                   </div>
                   <div className="mt-2">
                     <Button onClick={addPartUsage}>
-                      <Save size={16} className="mr-1" />Add Usage & Decrement
+                      <Save size={16} className="mr-1" />
+                      Add Usage & Decrement
                     </Button>
                   </div>
                 </div>
@@ -818,7 +799,8 @@ const WorkOrdersManagement = () => {
                   <div className="flex items-center gap-2 mb-2">
                     <input ref={fileRef} type="file" />
                     <Button onClick={uploadAttachment} disabled={!fileRef.current?.files?.length}>
-                      <Upload size={16} className="mr-1" />Upload
+                      <Upload size={16} className="mr-1" />
+                      Upload
                     </Button>
                   </div>
                   <div className="text-xs text-gray-600 mb-2">
@@ -840,7 +822,9 @@ const WorkOrdersManagement = () => {
                       ))}
                       {!attachments.length && (
                         <tr>
-                          <td className="p-2 text-gray-500" colSpan={2}>No attachments yet.</td>
+                          <td className="p-2 text-gray-500" colSpan={2}>
+                            No attachments yet.
+                          </td>
                         </tr>
                       )}
                     </tbody>

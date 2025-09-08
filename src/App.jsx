@@ -1,59 +1,107 @@
-// src/App.jsx
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+﻿// src/App.jsx
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
-import Login from './components/Login';
-import LandingPage from './components/LandingPage';
-import Dashboard from './components/Dashboard';
-import AuthGuard from './components/AuthGuard';
-import UpdatePassword from './components/UpdatePassword';
-import ModuleRenderer from './components/ModuleRenderer';
-import EquipmentDetail from './pages/EquipmentDetail';
-import PMWorkOrderDetail from './pages/PMWorkOrderDetail';
-import ScanPage from './routes/ScanPage';
+/* Auth & guards */
+import AuthGuard from "./components/AuthGuard";
 
-import PartDetail from './pages/PartDetail';   // ← new
-import BinDetail from './pages/BinDetail';     // ← new
+/* Public/auth pages */
+import Login from "./components/Login";
+import UpdatePassword from "./components/UpdatePassword";
 
-import { UOMProvider } from './contexts/UOMContext'; // ← wrap everything
+/* Shell & dashboard */
+import LandingPage from "./components/LandingPage";
+import Dashboard from "./components/Dashboard";
 
-export default function App() {
+/* Feature pages & deep links */
+import InboundFlowPage from "./pages/InboundFlowPage";
+import EquipmentDetail from "./pages/EquipmentDetail";
+import PMWorkOrderDetail from "./pages/PMWorkOrderDetail";
+import ScanPage from "./routes/ScanPage";
+import PartDetail from "./pages/PartDetail";
+import BinDetail from "./pages/BinDetail";
+import PurchaseOrderDetail from "./components/submodules/Procurement/PurchaseOrderDetail.jsx";
+
+/* AI pages */
+import AIChatPanel from "./components/AIChatPanel";
+import PalletAIReport from "./components/PalletAIReport";
+
+/* Dynamic module renderer */
+import ModuleRenderer from "./components/ModuleRenderer";
+
+/* Dev helper (safe in dev only) */
+import DebugOverlayTamer from "./components/common/DebugOverlayTamer.jsx";
+
+function App() {
   return (
     <>
       <Toaster position="top-right" />
-      <UOMProvider>
-        <Routes>
-          {/* Public/auth routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/update-password" element={<UpdatePassword />} />
 
-          {/* Public scan route (keep public, or move into AuthGuard if desired) */}
-          <Route path="/scan" element={<ScanPage />} />
+      <Routes>
+        {/* Public/auth routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/update-password" element={<UpdatePassword />} />
 
-          {/* Equipment detail by internal id (public) */}
-          <Route path="/equipment/:id" element={<EquipmentDetail />} />
+        {/* Public scan route */}
+        <Route path="/scan" element={<ScanPage />} />
 
-          {/* Authenticated app shell */}
-          <Route path="/" element={<AuthGuard><LandingPage /></AuthGuard>}>
-            <Route index element={<Dashboard />} />
+        {/* Public equipment detail */}
+        <Route path="/equipment/:id" element={<EquipmentDetail />} />
 
-            {/* PM Work Order detail (HR code or UUID) */}
-            <Route path="pm/wo/:ref" element={<PMWorkOrderDetail />} />
+        {/* Authenticated app shell */}
+        <Route
+          path="/"
+          element={
+            <AuthGuard>
+              <LandingPage />
+            </AuthGuard>
+          }
+        >
+          {/* Default to /dashboard when inside the shell */}
+          <Route index element={<Navigate to="dashboard" replace />} />
 
-            {/* Inventory deep-links (from labels / scanner) */}
-            <Route path="inventory/part/:id" element={<PartDetail />} />
-            <Route path="inventory/part/by-code/:code" element={<PartDetail />} />
-            <Route path="inventory/bin/:plant_id/:bin_code" element={<BinDetail />} />
+          {/* Explicit routes under shell (use relative paths to keep the layout) */}
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="inbound-flow" element={<InboundFlowPage />} />
 
-            {/* Dynamic module routes */}
-            <Route path=":moduleKey" element={<ModuleRenderer />} />
-            <Route path=":moduleKey/:submoduleKey" element={<ModuleRenderer />} />
-          </Route>
+          {/* AI routes (kept before dynamic :moduleKey so they don't get captured) */}
+          <Route
+            path="ai"
+            element={<AIChatPanel title="DigitizerX • AI Assistant" />}
+          />
+          <Route path="ai/pallet" element={<PalletAIReport />} />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </UOMProvider>
+          {/* PM Work Order detail */}
+          <Route path="pm/wo/:ref" element={<PMWorkOrderDetail />} />
+
+          {/* Inventory deep-links */}
+          <Route path="inventory/part/:id" element={<PartDetail />} />
+          <Route path="inventory/part/by-code/:code" element={<PartDetail />} />
+          <Route
+            path="inventory/bin/:plant_id/:bin_code"
+            element={<BinDetail />}
+          />
+
+          {/* Procurement: PO detail/print */}
+          <Route
+            path="procurement/purchase-order/:poId"
+            element={<PurchaseOrderDetail />}
+          />
+
+          {/* Dynamic module routes (Procurement, HR, Engineering, etc.) */}
+          <Route path=":moduleKey" element={<ModuleRenderer />} />
+          <Route path=":moduleKey/:submoduleKey" element={<ModuleRenderer />} />
+        </Route>
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+
+      {/* Dev-only HUD controller */}
+      {import.meta.env.DEV && <DebugOverlayTamer />}
     </>
   );
 }
+
+export default App;

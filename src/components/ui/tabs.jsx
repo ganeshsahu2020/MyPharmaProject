@@ -1,9 +1,10 @@
+// src/components/ui/tabs.jsx
 import * as React from 'react';
 
 export function Tabs({ children, value, onValueChange }) {
   return (
     <div className="w-full" role="tablist">
-      {React.Children.map(children, child =>
+      {React.Children.map(children, (child) =>
         React.cloneElement(child, { value, onValueChange })
       )}
     </div>
@@ -13,7 +14,7 @@ export function Tabs({ children, value, onValueChange }) {
 export function TabsList({ children, value, onValueChange }) {
   return (
     <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
-      {React.Children.map(children, child =>
+      {React.Children.map(children, (child) =>
         React.cloneElement(child, { value, onValueChange })
       )}
     </div>

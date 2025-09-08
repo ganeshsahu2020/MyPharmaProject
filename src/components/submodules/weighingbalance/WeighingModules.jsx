@@ -1,3 +1,4 @@
+// ✅ File: src/components/submodules/weighingbalance/WeighingModules.jsx
 import { useState, useEffect } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { Scale, ClipboardCheck, CalendarCheck } from 'lucide-react';

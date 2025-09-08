@@ -1,12 +1,14 @@
 // src/utils/globalResolver.js
 // Robust input → route resolver used by sidebar "Scan & lookup", /scan, etc.
-// Supports: JSON QR (pm_wo, part, bin, asset), URLs, UUIDs, WO HR codes,
-// asset codes/serials/tokens, part codes, BIN-* codes, and legacy "Plant|BIN".
+// Supports JSON QR payloads, URLs, UUIDs, WO HR codes, asset codes/serials/tokens,
+// part codes, BIN-* codes, and legacy "Plant|BIN" strings.
 
 /** @typedef {{ from: (table:string)=>any, rpc: (fn:string,args:any)=>any }} Supabase */
 
 const UUID_RX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isUUID = (v) => UUID_RX.test(String(v || ""));
 
 // Accept base36 HR codes like "WO-1SJ44WH" or "1SJ44WH" (5–12)
 const pickHrCode = (s) => {
@@ -17,25 +19,38 @@ const pickHrCode = (s) => {
   return m ? m[0] : null;
 };
 
-const isUUID = (v) => UUID_RX.test(String(v || ""));
-
 // ----- route builders (must match App.jsx routes) -----
 const toPmWo = (ref) => `/pm/wo/${encodeURIComponent(ref)}`; // UUID or HR code
 const toEquipment = (id) => `/equipment/${encodeURIComponent(id)}`;
-const toInventory = (params) =>
-  `/engineering/inventory-spare-parts-management?${new URLSearchParams(params).toString()}`;
 
-// ----- helpers -----
+/**
+ * Build the inventory route used by the Engineering/Inventory module.
+ * Accepts an object or URLSearchParams.
+ */
+const toInventory = (params) => {
+  const qs =
+    params instanceof URLSearchParams
+      ? params.toString()
+      : new URLSearchParams(params || {}).toString();
+  return `/engineering/inventory-spare-parts-management${qs ? `?${qs}` : ""}`;
+};
+
+// ----- helpers that talk to Supabase (all guarded) -----
 async function findAssetIdByToken(supabase, token) {
+  if (!supabase?.from) return null;
   // Try asset.qr_token then asset.public_token
   let q = await supabase.from("asset").select("id").eq("qr_token", token).maybeSingle();
   if (!q?.error && q?.data?.id) return q.data.id;
+
   q = await supabase.from("asset").select("id").eq("public_token", token).maybeSingle();
   if (!q?.error && q?.data?.id) return q.data.id;
+
   return null;
 }
 
 async function findAssetIdByIdOrCode(supabase, input) {
+  if (!supabase?.from) return null;
+
   // 1) Direct id (UUID)
   if (isUUID(input)) {
     const q = await supabase.from("asset").select("id").eq("id", input).maybeSingle();
@@ -53,20 +68,30 @@ async function findAssetIdByIdOrCode(supabase, input) {
 }
 
 async function resolveHrWoToUuid(supabase, hr) {
+  if (!supabase?.rpc) return null;
   try {
     const r = await supabase.rpc("pm_resolve_wo_hr", { p_code: hr });
     if (!r?.error && r?.data) return r.data; // uuid
-  } catch {}
+  } catch {
+    /* ignore */
+  }
   return null;
 }
 
 async function findPartUidByCode(supabase, code) {
+  if (!supabase?.from) return null;
+
   // exact
   let q = await supabase.from("part_master").select("id").eq("part_code", code).maybeSingle();
   if (!q?.error && q?.data?.id) return q.data.id;
 
   // ilike exact (case-insensitive)
-  q = await supabase.from("part_master").select("id").ilike("part_code", code).limit(1).maybeSingle();
+  q = await supabase
+    .from("part_master")
+    .select("id")
+    .ilike("part_code", code)
+    .limit(1)
+    .maybeSingle();
   if (!q?.error && q?.data?.id) return q.data.id;
 
   return null;
@@ -92,12 +117,9 @@ export async function resolveInputToPath(rawInput, supabase) {
       if (isUUID(wo)) return toPmWo(wo);
       const hr = pickHrCode(wo);
       if (hr) {
-        // You can navigate with HR directly; detail page supports it,
-        // but try to upgrade to UUID if RPC is available.
-        const uuid = await resolveHrWoToUuid(supabase, hr);
+        const uuid = await resolveHrWoToUuid(supabase, hr); // best-effort
         return toPmWo(uuid || hr);
       }
-      // If only a token-like UUID is present under token key
       if (isUUID(o.token)) return toPmWo(o.token);
       return null;
     }
@@ -107,20 +129,20 @@ export async function resolveInputToPath(rawInput, supabase) {
       const part_code = o.part_code || o.code || null;
       const plant_id = o.plant_id || o.plant || null;
       const bin_code = o.bin_code || o.bin || null;
-      const params = new URLSearchParams();
-      if (part_uid) params.set("part", String(part_uid));
-      if (!part_uid && part_code) params.set("part_code", String(part_code));
-      if (plant_id) params.set("plant_id", String(plant_id));
-      if (bin_code) params.set("bin_code", String(bin_code));
+
+      const params = {};
+      if (part_uid) params.part = String(part_uid);
+      if (!part_uid && part_code) params.part_code = String(part_code);
+      if (plant_id) params.plant_id = String(plant_id);
+      if (bin_code) params.bin_code = String(bin_code);
+
       return toInventory(params);
     }
 
     if (type === "bin") {
       const plant_id = o.plant_id || o.plant || "Plant1";
       const bin_code = o.bin_code || o.bin;
-      if (bin_code) {
-        return toInventory(new URLSearchParams({ plant_id, bin_code }));
-      }
+      if (bin_code) return toInventory({ plant_id, bin_code });
       return null;
     }
 
@@ -132,7 +154,6 @@ export async function resolveInputToPath(rawInput, supabase) {
         const assetId = await findAssetIdByIdOrCode(supabase, code);
         if (assetId) return toEquipment(assetId);
       }
-      // token?
       if (o.token && isUUID(o.token)) {
         const idByTok = await findAssetIdByToken(supabase, o.token);
         if (idByTok) return toEquipment(idByTok);
@@ -158,7 +179,10 @@ export async function resolveInputToPath(rawInput, supabase) {
     const eq = u.pathname.match(/\/equipment\/([^/?#]+)/i);
     if (eq) return toEquipment(decodeURIComponent(eq[1]));
 
-    const qid = u.searchParams.get("id") || u.searchParams.get("token") || u.searchParams.get("qr");
+    const qid =
+      u.searchParams.get("id") ||
+      u.searchParams.get("token") ||
+      u.searchParams.get("qr");
     if (qid && isUUID(qid)) {
       const idByTok = await findAssetIdByToken(supabase, qid);
       return idByTok ? toEquipment(idByTok) : toPmWo(qid);
@@ -185,14 +209,14 @@ export async function resolveInputToPath(rawInput, supabase) {
 
   // 5) BIN-* → inventory by bin
   if (/^BIN-/i.test(s)) {
-    return toInventory(new URLSearchParams({ plant_id: "Plant1", bin_code: s }));
+    return toInventory({ plant_id: "Plant1", bin_code: s });
   }
 
   // 6) Legacy "Plant|BIN"
   if (s.includes("|")) {
     const [plant_id, bin_code] = s.split("|");
     if (plant_id && bin_code) {
-      return toInventory(new URLSearchParams({ plant_id, bin_code }));
+      return toInventory({ plant_id, bin_code });
     }
   }
 
@@ -205,10 +229,11 @@ export async function resolveInputToPath(rawInput, supabase) {
   // 8) Part by code
   {
     const partUid = await findPartUidByCode(supabase, s);
-    if (partUid) {
-      return toInventory(new URLSearchParams({ part: String(partUid) }));
-    }
+    if (partUid) return toInventory({ part: String(partUid) });
   }
 
   return null;
 }
+
+// default export for convenience
+export default resolveInputToPath;

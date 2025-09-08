@@ -4,3 +4,11 @@ dist
 .env.*
 .DS_Store
 .vscode
+node_modules/
+dist/
+build/
+.vite/
+*.log
+!.env.example
+.vscode/
+coverage/

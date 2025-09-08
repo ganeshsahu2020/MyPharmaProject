@@ -1,4 +1,1 @@
-{
-  "name": "equipment-public",
-  "verify_jwt": false
-}
+﻿{ "imports": {} }

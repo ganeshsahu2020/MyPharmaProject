@@ -1,3 +1,4 @@
+// ✅ File: src/components/submodules/weighingbalance/MonthlyCalibrationMaster.jsx
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../../utils/supabaseClient";
 import toast from "react-hot-toast";
@@ -28,7 +29,7 @@ const MonthlyCalibrationMaster = () => {
       console.error("Error fetching balances:", error);
     } else {
       console.log("Fetched balances:", data); // Check data here
-      setBalances(data);
+      setBalances(data || []);
     }
     setLoading(false);
   };
@@ -54,10 +55,7 @@ const MonthlyCalibrationMaster = () => {
 
   const handleSave = async (id) => {
     await toast.promise(
-      supabase
-        .from("balance_monthly_calibration")
-        .update(formData)
-        .eq("id", id),
+      supabase.from("balance_monthly_calibration").update(formData).eq("id", id),
       {
         loading: "Saving...",
         success: "Updated successfully",
@@ -85,6 +83,7 @@ const MonthlyCalibrationMaster = () => {
         <Box className="text-blue-600" /> Monthly Calibration Master
       </h2>
 
+      {/* Filter / search */}
       <div className="mb-6 w-full max-w-md">
         <label className="block text-sm font-semibold mb-1 flex items-center gap-1">
           <Search size={16} className="text-blue-600" /> Search Balance
@@ -100,6 +99,7 @@ const MonthlyCalibrationMaster = () => {
         />
       </div>
 
+      {/* Table */}
       {displayedBalances.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm border">
@@ -144,7 +144,7 @@ const MonthlyCalibrationMaster = () => {
                           <input
                             type="number"
                             className="w-20 border p-1 rounded text-center"
-                            value={formData[field] || 0}
+                            value={formData[field] ?? 0}
                             onChange={(e) => handleInputChange(field, e.target.value)}
                           />
                         ) : (

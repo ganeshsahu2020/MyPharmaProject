@@ -2,39 +2,44 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Package, Badge as BadgeIcon, Tag, Factory, Box, CalendarCheck, CalendarClock, QrCode,
-  Edit3, Save, X, ShieldCheck, Trash2, Copy, CheckCircle2, Lock, Printer
+  Package, Tag, Factory, Box, CalendarCheck, CalendarClock, QrCode,
+  Edit3, Save, X, ShieldCheck, Trash2, Copy, Printer, Lock, CheckCircle2,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { supabase } from '../utils/supabaseClient';
 import logo from '../assets/logo.png';
 
 /* ───────────────────────── BRAND / CONFIG ───────────────────────── */
-// Tune these to your exact brand
 const BRAND = {
   name: 'DigitizerX',
-  nameColor: '#1E40AF',       // company name text color (above the logo)
-  blue: '#143C8B',            // deeper brand blue
-  emerald: '#0F7A5A',         // deeper emerald
+  nameColor: '#1E40AF',
+  blue: '#143C8B',
+  emerald: '#0F7A5A',
   gradientFrom: '#ecf2ff',
   gradientVia: '#f2f7ff',
-  gradientTo:   '#eefcf6',
+  gradientTo: '#eefcf6',
 };
 
 const cls = (...a) => a.filter(Boolean).join(' ');
 const fmt = (d) => (d ? new Date(d).toLocaleDateString() : '—');
 
 const StatusBadge = ({ status }) => {
-  const s = (status || 'Active').toLowerCase();
-  const map = {
-    active: `bg-[${BRAND.gradientTo}] text-[${BRAND.emerald}] border-emerald-200`,
-    'out of service': 'bg-amber-100 text-amber-800 border-amber-200',
-    retired: 'bg-rose-100 text-rose-700 border-rose-200'
-  };
-  const klass = map[s] || 'bg-slate-100 text-slate-700 border-slate-200';
+  const s = String(status || 'Active').toLowerCase();
+  const style =
+    s === 'active'
+      ? { backgroundColor: '#eefcf6', color: '#0F7A5A', border: '1px solid #c7f0de' }
+      : s === 'out of service'
+      ? { backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }
+      : s === 'retired'
+      ? { backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }
+      : { backgroundColor: '#f1f5f9', color: '#334155', border: '1px solid #e2e8f0' };
+
   return (
-    <span className={cls('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border', klass)}>
-      <CheckCircle2 size={14} className="opacity-80" />
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
+      style={style}
+    >
+      <CheckCircle2 size={14} style={{ opacity: 0.8 }} />
       {status || '—'}
     </span>
   );
@@ -44,7 +49,11 @@ const Tile = ({ icon: Icon, color, label, value }) => (
   <div className="rounded-xl border bg-white/90 shadow-sm hover:shadow-md transition-shadow p-4 flex items-start gap-3">
     <div
       className="shrink-0 h-9 w-9 rounded-xl flex items-center justify-center ring-1"
-      style={{ color: color.fg, background: color.bg, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.02)' }}
+      style={{
+        color: color.fg,
+        background: color.bg,
+        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.02)',
+      }}
     >
       <Icon size={18} />
     </div>
@@ -70,23 +79,20 @@ const IconInput = ({ icon: Icon, ...props }) => (
   </div>
 );
 
-const IconSelect = ({ icon: Icon, ...props }) => (
-  <div className="relative">
-    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none" style={{ color: BRAND.emerald }}>
-      <BadgeIcon size={16} />
-    </div>
-    <select
-      {...props}
-      className={cls(
-        'w-full border rounded-lg px-3 py-2 text-sm pl-9',
-        'focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400'
-      )}
-    />
-  </div>
+const IconSelect = ({ ...props }) => (
+  <select
+    {...props}
+    className={cls(
+      'w-full border rounded-lg px-3 py-2 text-sm',
+      'focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400'
+    )}
+  />
 );
 
 const Skeleton = ({ h = 14 }) => (
-  <div className="animate-pulse"><div className="rounded bg-slate-200" style={{ height: h }} /></div>
+  <div className="animate-pulse">
+    <div className="rounded bg-slate-200" style={{ height: h }} />
+  </div>
 );
 
 /* ───────────────────────── MAIN PAGE ───────────────────────── */
@@ -111,7 +117,7 @@ const EquipmentDetail = () => {
     calibration_done_on: '',
     calibration_due_on: '',
     qr_token: '',
-    public_token: ''
+    public_token: '',
   });
 
   const title = useMemo(() => asset?.name || asset?.asset_code || 'Equipment', [asset]);
@@ -139,11 +145,14 @@ const EquipmentDetail = () => {
     const op = (async () => {
       const { data, error } = await supabase
         .from('asset')
-        .select('id,asset_code,name,status,serial_no,manufacturer,model,install_date,calibration_done_on,calibration_due_on,qr_token,public_token,created_at')
+        .select(
+          'id,asset_code,name,status,serial_no,manufacturer,model,install_date,calibration_done_on,calibration_due_on,qr_token,public_token,created_at'
+        )
         .eq('id', id)
         .maybeSingle();
       if (error) throw error;
       if (!data) throw new Error('Not found');
+
       setAsset(data);
       setForm({
         asset_code: data.asset_code || '',
@@ -156,47 +165,57 @@ const EquipmentDetail = () => {
         calibration_done_on: data.calibration_done_on || '',
         calibration_due_on: data.calibration_due_on || '',
         qr_token: data.qr_token || '',
-        public_token: data.public_token || ''
+        public_token: data.public_token || '',
       });
     })();
 
-    await toast.promise(op, {
-      loading: 'Loading…',
-      success: 'Loaded',
-      error: (e) => e?.message || 'Failed to load'
-    }).finally(() => setLoading(false));
+    await toast
+      .promise(op, {
+        loading: 'Loading…',
+        success: 'Loaded',
+        error: (e) => e?.message || 'Failed to load',
+      })
+      .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const requireAdmin = () => {
-    if (!isAdmin) { toast.error('Admin only'); return false; }
+    if (!isAdmin) {
+      toast.error('Admin only');
+      return false;
+    }
     return true;
   };
 
   const onSave = async () => {
     if (!requireAdmin()) return;
     setSaving(true);
-    await toast.promise(
-      (async () => {
-        const payload = {
-          asset_code: form.asset_code || null,
-          name: form.name || null,
-          status: form.status || 'Active',
-          serial_no: form.serial_no || null,
-          manufacturer: form.manufacturer || null,
-          model: form.model || null,
-          install_date: form.install_date || null,
-          calibration_done_on: form.calibration_done_on || null,
-          calibration_due_on: form.calibration_due_on || null
-        };
-        const { error } = await supabase.from('asset').update(payload).eq('id', id);
-        if (error) throw error;
-        await load();
-        setEdit(false);
-      })(),
-      { loading: 'Saving…', success: 'Saved', error: (e) => e?.message || 'Save failed' }
-    ).finally(() => setSaving(false));
+    await toast
+      .promise(
+        (async () => {
+          const payload = {
+            asset_code: form.asset_code || null,
+            name: form.name || null,
+            status: form.status || 'Active',
+            serial_no: form.serial_no || null,
+            manufacturer: form.manufacturer || null,
+            model: form.model || null,
+            install_date: form.install_date || null,
+            calibration_done_on: form.calibration_done_on || null,
+            calibration_due_on: form.calibration_due_on || null,
+          };
+          const { error } = await supabase.from('asset').update(payload).eq('id', id);
+          if (error) throw error;
+          await load();
+          setEdit(false);
+        })(),
+        { loading: 'Saving…', success: 'Saved', error: (e) => e?.message || 'Save failed' }
+      )
+      .finally(() => setSaving(false));
   };
 
   const onRetire = async () => {
@@ -231,12 +250,9 @@ const EquipmentDetail = () => {
       () => toast.error('Copy failed')
     );
 
-  // 🔶 Print Sheet (available to all users)
   const onPrintSheet = () => {
     const a = asset;
     if (!a) return;
-
-    // Only the token (no URL)
     const token = a.qr_token || a.public_token || '';
     const qrImg = token
       ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(token)}`
@@ -247,10 +263,7 @@ const EquipmentDetail = () => {
         @page { margin: 14mm; }
         * { box-sizing: border-box; }
         body { font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, Arial, sans-serif; color: #0f172a; }
-        .header {
-          display:flex; align-items:center; gap:16px; margin-bottom:16px;
-          border-bottom:1px solid #e5e7eb; padding-bottom:12px;
-        }
+        .header { display:flex; align-items:center; gap:16px; margin-bottom:16px; border-bottom:1px solid #e5e7eb; padding-bottom:12px; }
         .brand { display:flex; align-items:flex-start; gap:12px; }
         .brand .name { font-weight:700; letter-spacing: .2px; margin-bottom:4px; }
         .title { font-size: 20px; font-weight: 800; color: ${BRAND.blue}; }
@@ -278,13 +291,10 @@ const EquipmentDetail = () => {
           </div>
           <div style="flex:1">
             <div class="title">${a.name || a.asset_code || 'Equipment'}</div>
-            <div style="margin-top:6px">
-              <span class="badge">${a.status || 'Active'}</span>
-            </div>
+            <div style="margin-top:6px"><span class="badge">${a.status || 'Active'}</span></div>
           </div>
           ${qrImg ? `<img src="${qrImg}" alt="QR" style="height:100px;width:100px;border:1px solid #e5e7eb;border-radius:8px;padding:6px;background:#fff" />` : ''}
         </div>
-
         <div class="grid">
           <div class="card"><div class="label">Equipment ID</div><div class="value">${a.asset_code || '—'}</div></div>
           <div class="card"><div class="label">Equipment Name</div><div class="value">${a.name || '—'}</div></div>
@@ -295,7 +305,6 @@ const EquipmentDetail = () => {
           <div class="card"><div class="label">Calibration Done</div><div class="value">${fmt(a.calibration_done_on)}</div></div>
           <div class="card"><div class="label">Calibration Due</div><div class="value">${fmt(a.calibration_due_on)}</div></div>
         </div>
-
         <div class="card" style="margin-top:14px">
           <div class="qrwrap">
             ${qrImg ? `<img src="${qrImg}" alt="QR" style="height:140px;width:140px;border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#fff"/>` : ''}
@@ -308,34 +317,27 @@ const EquipmentDetail = () => {
         </div>
       </body></html>
     `;
-
     const w = window.open('', '_blank', 'noopener,noreferrer');
     if (!w) { toast.error('Popup blocked'); return; }
     w.document.open(); w.document.write(html); w.document.close();
-    w.onload = () => { try { w.focus(); w.print(); } catch {} }
+    w.onload = () => { try { w.focus(); w.print(); } catch {} };
   };
 
-  /* ───────────────────────── RENDER ───────────────────────── */
   return (
     <div className="px-3 py-4 sm:p-6">
       <Toaster position="top-right" />
-
       <div className="max-w-5xl mx-auto">
         <div className="rounded-2xl border shadow-sm bg-white/80 overflow-hidden">
           <div
             className="bg-gradient-to-r"
-            style={{
-              backgroundImage: `linear-gradient(to right, ${BRAND.gradientFrom}, ${BRAND.gradientVia}, ${BRAND.gradientTo})`
-            }}
+            style={{ backgroundImage: `linear-gradient(to right, ${BRAND.gradientFrom}, ${BRAND.gradientVia}, ${BRAND.gradientTo})` }}
           >
             <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-4">
-                {/* Company name ABOVE logo */}
                 <div className="flex flex-col items-center justify-center">
                   <div className="text-sm font-bold" style={{ color: BRAND.nameColor }}>{BRAND.name}</div>
                   <img src={logo} alt="Logo" className="h-10 w-auto mt-1" />
                 </div>
-
                 <div>
                   <div className="text-xl sm:text-2xl font-extrabold" style={{ color: BRAND.blue }}>
                     {loading ? <Skeleton h={20} /> : title}
@@ -351,7 +353,6 @@ const EquipmentDetail = () => {
                 </div>
               </div>
 
-              {/* Actions: Print for everyone; admin-only management */}
               <div className="flex flex-wrap gap-2">
                 <button
                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50"
@@ -406,7 +407,6 @@ const EquipmentDetail = () => {
             </div>
           </div>
 
-          {/* Content */}
           <div className="p-4 sm:p-6">
             {!edit ? (
               <>
@@ -419,7 +419,7 @@ const EquipmentDetail = () => {
                     <>
                       <Tile icon={Tag}           color={{ bg:'#eef2ff', fg:BRAND.blue }} label="Equipment ID"   value={asset?.asset_code} />
                       <Tile icon={Package}       color={{ bg:'#f0f7ff', fg:BRAND.blue }} label="Equipment Name" value={asset?.name} />
-                      <Tile icon={BadgeIcon}     color={{ bg:'#edfff7', fg:BRAND.emerald }} label="Status" value={asset?.status} />
+                      <Tile icon={ShieldCheck}   color={{ bg:'#edfff7', fg:BRAND.emerald }} label="Status" value={asset?.status} />
                       <Tile icon={Tag}           color={{ bg:'#e9fbff', fg:'#0c7d8a' }} label="Serial #" value={asset?.serial_no} />
                       <Tile icon={Factory}       color={{ bg:'#ecfcf7', fg:BRAND.emerald }} label="Manufacturer" value={asset?.manufacturer} />
                       <Tile icon={Box}           color={{ bg:'#f7eefe', fg:'#7a1896' }} label="Model" value={asset?.model} />
@@ -464,7 +464,6 @@ const EquipmentDetail = () => {
                 )}
               </>
             ) : (
-              // Admin edit view
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="text-[11px] uppercase tracking-wide text-slate-500 mb-1">Equipment ID</div>

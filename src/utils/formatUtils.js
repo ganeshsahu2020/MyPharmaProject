@@ -1,4 +1,5 @@
-```javascript
+// src/utils/formatWithLeastCountDigits.js
+
 /**
  * Formats a numeric value to a specified number of decimal places based on least_count_digits.
  * Returns '-' for invalid numbers and handles null/undefined cases.
@@ -10,4 +11,3 @@ export const formatWithLeastCountDigits = (value, digits) => {
   const n = parseFloat(value);
   return isNaN(n) ? '-' : n.toFixed(parseInt(digits || 0));
 };
-```
