@@ -9,7 +9,7 @@
 
 # Set your app URL for production builds (used by your reset-password redirect, etc.)
 [context.production.environment]
-  VITE_APP_URL = "https://digitizerxp.netlify.app"
+  VITE_APP_URL = "https://digitizerx.netlify.app"
 
 # Optional: nicer caching for built assets
 [[headers]]
